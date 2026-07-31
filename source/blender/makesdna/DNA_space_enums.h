@@ -1180,9 +1180,11 @@ enum eSpace_Type : char {
   SPACE_TOPBAR = 21,
   SPACE_STATUSBAR = 22,
   SPACE_SPREADSHEET = 23,
-  SPACE_PROJECT = 24
+  SPACE_PROJECT = 24,
+  /** Hosts an add-on's panels as a full editor, see #SpaceAddon. */
+  SPACE_ADDON = 25
 
-#define SPACE_TYPE_NUM (SPACE_PROJECT + 1)
+#define SPACE_TYPE_NUM (SPACE_ADDON + 1)
 };
 
 /* use for function args */

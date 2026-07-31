@@ -189,6 +189,11 @@ const EnumPropertyItem rna_enum_space_type_items[] = {
      ICON_PROJECT,
      "Project Setup",
      "Manage the current Blender project"},
+    {SPACE_ADDON,
+     "ADDON",
+     ICON_PLUGIN,
+     "Add-on",
+     "Show the panels of a single add-on or extension as a full editor"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -818,6 +823,8 @@ static StructRNA *rna_Space_refine(PointerRNA *ptr)
       return RNA_SpaceSpreadsheet;
     case SPACE_PROJECT:
       return RNA_SpaceProject;
+    case SPACE_ADDON:
+      return RNA_SpaceAddon;
 
       /* Currently no type info. */
     case SPACE_SCRIPT:
@@ -9627,6 +9634,22 @@ static void rna_def_space_project(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Active Section", "Choose the category of options to display");
 }
 
+static void rna_def_space_addon(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "SpaceAddon", "Space");
+  RNA_def_struct_sdna(srna, "SpaceAddon");
+  RNA_def_struct_ui_text(srna, "Space Add-on", "Add-on editor space data");
+
+  prop = RNA_def_property(srna, "addon_id", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "addon_id");
+  RNA_def_property_ui_text(
+      prop, "Add-on", "Python module name of the add-on whose panels are shown in this editor");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_CHANGED, nullptr);
+}
+
 void RNA_def_space(BlenderRNA *brna)
 {
   rna_def_space(brna);
@@ -9656,6 +9679,7 @@ void RNA_def_space(BlenderRNA *brna)
   rna_def_space_clip(brna);
   rna_def_space_spreadsheet(brna);
   rna_def_space_project(brna);
+  rna_def_space_addon(brna);
 }
 
 }  // namespace blender

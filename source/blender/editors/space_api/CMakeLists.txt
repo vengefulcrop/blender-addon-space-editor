@@ -22,6 +22,7 @@ set(LIB
   PRIVATE bf::dna
   bf_editor_geometry
   bf_editor_space_action
+  bf_editor_space_addon
   bf_editor_space_buttons
   bf_editor_space_clip
   bf_editor_space_console

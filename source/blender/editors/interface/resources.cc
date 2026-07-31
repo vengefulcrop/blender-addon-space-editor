@@ -129,6 +129,8 @@ const uchar *get_color_ptr(const bTheme *btheme, int spacetype, int colorid)
 
       switch (spacetype) {
         case SPACE_PROPERTIES:
+        /* The add-on editor hosts panels, so it reuses the panel-oriented Properties theme. */
+        case SPACE_ADDON:
           ts = &btheme->space_properties;
           break;
         case SPACE_VIEW3D:

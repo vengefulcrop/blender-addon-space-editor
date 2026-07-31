@@ -1322,4 +1322,36 @@ struct SpaceProject {
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Add-on Editor
+ * \{ */
+
+/**
+ * Hosts the panels of a single add-on or extension as a full editor.
+ *
+ * The add-on is identified by its Python module name rather than by the enum sub-type
+ * index, because sub-type indices are not stable across sessions: enabling or disabling
+ * an add-on reorders them. This mirrors #SpaceNode, which stores the node tree type
+ * ID name and resolves it to an index only for the editor type drop-down.
+ */
+struct SpaceAddon {
+  SpaceLink *next = nullptr, *prev = nullptr;
+  /** Storage of regions for inactive spaces. */
+  ListBaseT<ARegion> regionbase = {nullptr, nullptr};
+  char spacetype = 0;
+  char link_flag = 0;
+  char _pad0[6] = {};
+  /* End 'SpaceLink' header. */
+
+  /**
+   * Python module name of the hosted add-on, e.g. `node_wrangler`.
+   * Empty when no add-on has been chosen yet. Preserved verbatim when the add-on is
+   * not enabled, so that re-enabling it restores the editor rather than corrupting
+   * the workspace.
+   */
+  char addon_id[128] = {};
+};
+
+/** \} */
+
 }  // namespace blender
