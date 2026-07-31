@@ -381,6 +381,13 @@ struct PanelType {
   char category[BKE_ST_MAXNAME];
   /** For work-spaces to selectively show. */
   char owner_id[128];
+  /**
+   * Top-level Python module the panel was registered from, e.g. `node_wrangler`.
+   * Filled automatically at registration, empty for panels defined in C.
+   * Used by the Add-on editor (#SpaceAddon) to collect a single add-on's panels.
+   * Distinct from #owner_id, which is the user-set work-space filter.
+   */
+  char addon_id[128];
   /** Parent idname for sub-panels. */
   char parent_id[BKE_ST_MAXNAME];
   /** Boolean property identifier of the panel custom data. Used to draw a highlighted border. */
@@ -789,6 +796,15 @@ SpaceType *BKE_spacetype_from_id(int spaceid);
 ARegionType *BKE_regiontype_from_id(const SpaceType *st, int regionid);
 Span<std::unique_ptr<SpaceType>> BKE_spacetypes_list();
 void BKE_spacetype_register(std::unique_ptr<SpaceType> st);
+
+/**
+ * Bump the panel types revision. Call whenever a #PanelType is registered or removed,
+ * so that consumers caching a filtered view of the registered panel types (such as the
+ * Add-on editor) can detect that their cache is stale.
+ */
+void BKE_paneltypes_tag_changed();
+/** Current panel types revision, see #BKE_paneltypes_tag_changed. */
+uint64_t BKE_paneltypes_state_get();
 bool BKE_spacetype_exists(int spaceid);
 /** Only for quitting blender. */
 void BKE_spacetypes_free();

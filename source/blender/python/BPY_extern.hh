@@ -139,6 +139,18 @@ void BPY_id_release(ID *id);
 void BPY_free_srna_pytype(StructRNA *srna);
 
 /**
+ * Write the top-level module a registerable Python class was defined in into \a r_module,
+ * e.g. `node_wrangler` for a class in `node_wrangler.interface`.
+ *
+ * This identifies the add-on or extension that owns the class. Used to group registered
+ * types by add-on. Writes an empty string when the module cannot be determined.
+ *
+ * \param py_class: The Python class, as passed to a type registration callback
+ * (the `data` argument). Ignored when null.
+ */
+void BPY_class_module_name_get(void *py_class, char *r_module, size_t r_module_maxncpy);
+
+/**
  * Avoids duplicating keyword list.
  */
 [[nodiscard]] bool BPY_string_is_keyword(const char *str);

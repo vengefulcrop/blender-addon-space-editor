@@ -54,6 +54,7 @@ class AssetRepresentation;
 /** Defined in `buttons_intern.hh`. */
 struct SpaceProperties_Runtime;
 struct SpaceConsole_Runtime;
+struct SpaceAddon_Runtime;
 
 namespace ed::space_node {
 struct SpaceNode_Runtime;
@@ -1350,6 +1351,9 @@ struct SpaceAddon {
    * the workspace.
    */
   char addon_id[128] = {};
+
+  /** Keep last. */
+  SpaceAddon_Runtime *runtime = nullptr;
 };
 
 /** \} */

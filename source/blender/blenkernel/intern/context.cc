@@ -1037,6 +1037,15 @@ SpaceConsole *CTX_wm_space_console(const bContext *C)
   return nullptr;
 }
 
+SpaceAddon *CTX_wm_space_addon(const bContext *C)
+{
+  ScrArea *area = CTX_wm_area(C);
+  if (area && area->spacetype == SPACE_ADDON) {
+    return static_cast<SpaceAddon *>(area->spacedata.first);
+  }
+  return nullptr;
+}
+
 SpaceImage *CTX_wm_space_image(const bContext *C)
 {
   ScrArea *area = CTX_wm_area(C);

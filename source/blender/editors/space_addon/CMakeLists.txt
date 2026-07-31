@@ -13,6 +13,8 @@ set(INC_SYS
 
 set(SRC
   space_addon.cc
+
+  addon_intern.hh
 )
 
 set(LIB

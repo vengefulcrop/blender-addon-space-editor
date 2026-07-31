@@ -76,6 +76,10 @@ const EnumPropertyItem rna_enum_uilist_layout_type_items[] = {
 #  include "BKE_report.hh"
 #  include "BKE_screen.hh"
 
+#  ifdef WITH_PYTHON
+#    include "BPY_extern.hh"
+#  endif
+
 #  include "ED_asset_library.hh"
 #  include "ED_asset_shelf.hh"
 
@@ -223,6 +227,7 @@ static bool rna_Panel_unregister(Main *bmain, StructRNA *type)
   }
 
   WM_paneltype_remove(pt);
+  BKE_paneltypes_tag_changed();
 
   for (LinkData &link : pt->children) {
     PanelType *child_pt = static_cast<PanelType *>(link.data);
@@ -399,6 +404,11 @@ static StructRNA *rna_Panel_register(Main *bmain,
     pt->description = nullptr;
   }
 
+  /* Record the owning add-on, so the Add-on editor can collect a single add-on's panels. */
+#ifdef WITH_PYTHON
+  BPY_class_module_name_get(data, pt->addon_id, sizeof(pt->addon_id));
+#endif
+
   pt->rna_ext.srna = RNA_def_struct_ptr(&RNA_blender_rna_get(), pt->idname, RNA_Panel);
   RNA_def_struct_translation_context(pt->rna_ext.srna, pt->translation_context);
   pt->rna_ext.data = data;
@@ -427,6 +437,7 @@ static StructRNA *rna_Panel_register(Main *bmain,
 
   /* Insert into list. */
   BLI_insertlinkafter(&art->paneltypes, pt_iter, pt);
+  BKE_paneltypes_tag_changed();
 
   if (parent) {
     pt->parent = parent;

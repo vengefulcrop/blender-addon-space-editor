@@ -10396,6 +10396,30 @@ void pyrna_alloc_types()
 #endif /* !NDEBUG */
 }
 
+void BPY_class_module_name_get(void *py_class, char *r_module, size_t r_module_maxncpy)
+{
+  r_module[0] = '\0';
+  if (py_class == nullptr) {
+    return;
+  }
+
+  const PyGILState_STATE gilstate = PyGILState_Ensure();
+
+  PyObject *py_module = PyObject_GetAttrString(static_cast<PyObject *>(py_class), "__module__");
+  if (py_module != nullptr) {
+    if (const char *module = PyUnicode_AsUTF8(py_module)) {
+      /* Only the top-level package identifies the add-on, so `foo.panels` becomes `foo`. */
+      const char *sep = strchr(module, '.');
+      const size_t len = sep ? size_t(sep - module) : strlen(module);
+      BLI_strncpy(r_module, module, std::min(len + 1, r_module_maxncpy));
+    }
+    Py_DECREF(py_module);
+  }
+  PyErr_Clear();
+
+  PyGILState_Release(gilstate);
+}
+
 void BPY_free_srna_pytype(StructRNA *srna)
 {
   PyObject *py_ptr = static_cast<PyObject *>(RNA_struct_py_type_get(srna));

@@ -361,6 +361,19 @@ Span<std::unique_ptr<SpaceType>> BKE_spacetypes_list()
   return get_space_types();
 }
 
+/** Incremented on every panel type registration or removal, never reset. */
+static uint64_t g_paneltypes_state = 0;
+
+void BKE_paneltypes_tag_changed()
+{
+  g_paneltypes_state++;
+}
+
+uint64_t BKE_paneltypes_state_get()
+{
+  return g_paneltypes_state;
+}
+
 void BKE_spacetype_register(std::unique_ptr<SpaceType> st)
 {
   /* sanity check */
