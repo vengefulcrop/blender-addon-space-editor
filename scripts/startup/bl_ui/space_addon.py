@@ -22,6 +22,29 @@ def _addon_display_name(context, addon_id):
     return addon_id
 
 
+def _registered_panel_classes():
+    """Every registered Panel subclass, at any inheritance depth.
+
+    Recursive because __subclasses__() returns direct subclasses only. An add-on that
+    defines its own base panel and derives from it (class MY_PT_x(MyAddonPanel)) would
+    otherwise be invisible here, while the C++ side - which scans registered PanelTypes
+    and does not care how they were declared - hosts it perfectly well.
+
+    Filtered on is_registered because the subclass tree also holds the add-on's *own*
+    unregistered base classes, and those routinely carry a bl_space_type for their
+    children to inherit. Counting them reports editors the add-on has no registered
+    panel for. Observed: ucupaint's unregistered Y_PT_UDIM_Atlas_menu base makes the
+    add-on look like it needs an Image Editor, so the empty-state panel would list one
+    as required while one is already open and still nothing draws.
+    """
+    stack = list(bpy.types.Panel.__subclasses__())
+    while stack:
+        cls = stack.pop()
+        stack.extend(cls.__subclasses__())
+        if getattr(cls, "is_registered", False):
+            yield cls
+
+
 def _addon_top_level_panel_space_types(addon_id):
     """Distinct bl_space_type values declared by addon_id's top-level panels.
 
@@ -34,7 +57,7 @@ def _addon_top_level_panel_space_types(addon_id):
     prefix-based attribution BPY_class_module_name_get uses on the C side.
     """
     seen = set()
-    for cls in bpy.types.Panel.__subclasses__():
+    for cls in _registered_panel_classes():
         module = cls.__module__
         if module != addon_id and not module.startswith(addon_id + "."):
             continue
