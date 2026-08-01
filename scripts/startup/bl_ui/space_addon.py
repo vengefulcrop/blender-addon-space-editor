@@ -276,7 +276,7 @@ class USERPREF_PT_addon_editors(Panel):
     def draw(self, context):
         layout = self.layout
         layout.label(
-            text="Add-ons listed here appear as editor types, via Add an Add-on... "
+            text="Add-ons listed here appear as editor types, via \"Add an Add-on...\" "
                  "in any area's editor type menu.")
 
         row = layout.row()
