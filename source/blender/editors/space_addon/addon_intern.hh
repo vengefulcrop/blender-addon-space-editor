@@ -21,14 +21,6 @@ struct SpaceAddon_Runtime {
    */
   ListBaseT<PanelType> paneltypes = {nullptr, nullptr};
 
-  /**
-   * Set when #paneltypes is empty specifically because an editor its panels need is not
-   * open anywhere, so the main region can explain the empty state instead of just
-   * leaving it blank. #SPACE_EMPTY otherwise (no add-on chosen, or the add-on simply
-   * has no matching panels).
-   */
-  short missing_spacetype = 0;
-
   /** Add-on the cached #paneltypes were collected for, to detect a change of add-on. */
   char cached_addon_id[128] = {};
   /** Value of #BKE_paneltypes_state_get when #paneltypes was built. */

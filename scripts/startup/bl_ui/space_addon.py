@@ -4,6 +4,7 @@
 
 import sys
 
+import bpy
 from bpy.types import Header, Operator, Panel, UIList
 from bpy.props import EnumProperty, IntProperty
 
@@ -21,6 +22,88 @@ def _addon_display_name(context, addon_id):
     return addon_id
 
 
+def _addon_top_level_panel_space_types(addon_id):
+    """Distinct bl_space_type values declared by addon_id's top-level panels.
+
+    Covers the same panels the C++ side collects (top-level, RGN_TYPE_UI or WINDOW).
+    Shared by _addon_supported_spaces() and _addon_has_open_delegate() so the
+    filtering rule exists once, not twice with the risk of drifting apart.
+
+    Membership matches by module prefix rather than an exact match, since a panel
+    defined in a submodule (foo.ui) still belongs to add-on "foo": mirrors the
+    prefix-based attribution BPY_class_module_name_get uses on the C side.
+    """
+    seen = set()
+    for cls in bpy.types.Panel.__subclasses__():
+        module = cls.__module__
+        if module != addon_id and not module.startswith(addon_id + "."):
+            continue
+        if getattr(cls, "bl_parent_id", ""):
+            continue  # Sub-panels are drawn by their parent; skip like the C side does.
+        if getattr(cls, "bl_region_type", "") not in {'UI', 'WINDOW'}:
+            continue
+        space_type = getattr(cls, "bl_space_type", "")
+        if space_type:
+            seen.add(space_type)
+    return seen
+
+
+def _addon_supported_spaces(addon_id):
+    """Human-readable names of every editor type addon_id's top-level panels declare.
+
+    Computed independently here in Python because both consumers of this list - the
+    header's info button and the empty-state panel below - are Python-drawn, and
+    neither needs anything the C++ side doesn't already expose more simply than a new
+    RNA collection would.
+    """
+    type_enum = bpy.types.Area.bl_rna.properties["type"].enum_items
+    names = []
+    for space_type in _addon_top_level_panel_space_types(addon_id):
+        item = type_enum.get(space_type)
+        names.append(item.name if item else space_type)
+    return sorted(names, key=str.lower)
+
+
+def _addon_has_open_delegate(context, addon_id):
+    """Whether an editor type addon_id's panels need is currently open somewhere.
+
+    Not a guarantee any specific panel will actually draw - an individual poll() can
+    still fail for unrelated reasons (no active object, and so on) - but it is the
+    same signal that decides whether delegation can find anything at all, and is the
+    best one available from Python without exposing new state from the C++ side.
+    """
+    open_types = {area.type for area in context.screen.areas}
+    for space_type in _addon_top_level_panel_space_types(addon_id):
+        # Matches the C side's delegation skip-list (BKE_screen.hh): these panels
+        # need no delegate, so they are always considered satisfied.
+        if space_type in {'EMPTY', 'ADDON'} or space_type in open_types:
+            return True
+    return False
+
+
+class ADDON_OT_supported_editors_info(Operator):
+    """Which editor types the hosted add-on's panels are written for"""
+    bl_idname = "addon.supported_editors_info"
+    bl_label = "Supported Editors"
+    bl_options = {'INTERNAL'}
+
+    @classmethod
+    def description(cls, context, properties):
+        addon_id = context.area.spaces.active.addon_id
+        names = _addon_supported_spaces(addon_id)
+        if not names:
+            return "No editor-type information available"
+        return "Panels shown here need one of: " + ", ".join(names)
+
+    @classmethod
+    def poll(cls, context):
+        return context.area is not None and context.area.type == 'ADDON'
+
+    def execute(self, context):
+        # Exists for its tooltip; nothing to do on click.
+        return {'CANCELLED'}
+
+
 class ADDON_HT_header(Header):
     bl_space_type = 'ADDON'
 
@@ -34,11 +117,55 @@ class ADDON_HT_header(Header):
         # Not context.space_data: while an add-on is hosted, that resolves to the editor
         # this area borrows context from, not to this SpaceAddon.
         space = context.area.spaces.active
+
+        # Only when something is actually drawing: an empty region already explains
+        # itself via ADDON_PT_empty_state, which covers the same information.
+        if space.addon_id and _addon_has_open_delegate(context, space.addon_id):
+            layout.operator(
+                "addon.supported_editors_info", text="", icon='INFO', emboss=False)
+
         layout.separator_spacer()
         if space.addon_id:
             layout.label(text=_addon_display_name(context, space.addon_id))
         else:
             layout.label(text="No Add-on Selected")
+
+
+class ADDON_PT_empty_state(Panel):
+    """Explains why the hosted area has nothing to show.
+
+    Injected by addon_panel_types_collect() (space_addon.cc) whenever the real
+    collected panel list is empty - never reached through normal panel drawing, since
+    this editor's window region always lays out SpaceAddon_Runtime::paneltypes, not
+    this region type's own native panel list.
+    """
+    bl_idname = "ADDON_PT_empty_state"
+    bl_space_type = 'ADDON'
+    bl_region_type = 'WINDOW'
+    bl_label = "Add-on Info"
+    bl_options = {'HIDE_HEADER'}
+
+    def draw(self, context):
+        layout = self.layout
+        addon_id = context.area.spaces.active.addon_id
+
+        if not addon_id:
+            layout.label(text="Choose an add-on from the editor type menu", icon='INFO')
+            return
+
+        names = _addon_supported_spaces(addon_id)
+        if not names:
+            layout.label(
+                text=_addon_display_name(context, addon_id) + " has no panels to show here",
+                icon='INFO')
+            return
+
+        col = layout.column(align=True)
+        col.label(text="This add-on's panels require one of the following", icon='INFO')
+        col.label(text="editor types to be present in the workspace:")
+        col.separator()
+        for name in names:
+            col.label(text="•  " + name)
 
 
 # Blender's own internal script packages, not real add-ons - see scripts/startup/bl_*.
@@ -71,6 +198,14 @@ def _installed_addon_items(self, context):
     for mod in addon_utils.modules():
         module_name = mod.__name__
         if module_name in _INTERNAL_MODULES:
+            continue
+        # Disabled add-ons register no panels, so picking one here would add a
+        # curated entry that the editor-type dropdown then hides anyway (it only
+        # shows entries with at least one currently-registered panel) - offering it
+        # here would be a dead end with no feedback. Matches addon_utils.py's own
+        # (loaded_default, loaded_state) naming; loaded_state is "is it enabled now".
+        _loaded_default, loaded_state = addon_utils.check(module_name)
+        if not loaded_state:
             continue
         items.append((module_name, _addon_label(module_name), module_name))
 
@@ -157,7 +292,9 @@ class USERPREF_PT_addon_editors(Panel):
 
 
 classes = (
+    ADDON_OT_supported_editors_info,
     ADDON_HT_header,
+    ADDON_PT_empty_state,
     ADDON_OT_pick_and_host,
     ADDON_OT_editor_remove,
     ADDON_UL_editors,

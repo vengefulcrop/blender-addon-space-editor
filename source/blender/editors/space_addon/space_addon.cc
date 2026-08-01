@@ -17,11 +17,6 @@
 #include "MEM_guardedalloc.h"
 
 #include <algorithm>
-#include <string>
-
-#include <fmt/format.h>
-
-#include "BLF_api.hh"
 
 #include "BLI_listbase.hh"
 #include "BLI_string.hh"
@@ -40,7 +35,6 @@
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 
-#include "UI_interface_c.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
@@ -158,6 +152,33 @@ static void addon_main_region_init(wmWindowManager *wm, ARegion *region)
 }
 
 /**
+ * Find this editor's own built-in fallback panel, registered normally from Python
+ * (`ADDON_PT_empty_state` in `bl_ui/space_addon.py`, `bl_space_type = 'ADDON'`,
+ * `bl_region_type = 'WINDOW'`). Nothing draws it natively - this editor's window region
+ * always lays out #SpaceAddon_Runtime::paneltypes, never the region type's own native
+ * list - so it is only ever reached via the explicit lookup in
+ * #addon_panel_types_collect below.
+ */
+static const PanelType *addon_empty_state_paneltype_find()
+{
+  const SpaceType *st = BKE_spacetype_from_id(SPACE_ADDON);
+  if (st == nullptr) {
+    return nullptr;
+  }
+  for (const ARegionType &art : st->regiontypes) {
+    if (art.regionid != RGN_TYPE_WINDOW) {
+      continue;
+    }
+    for (const PanelType &pt : art.paneltypes) {
+      if (STREQ(pt.idname, "ADDON_PT_empty_state")) {
+        return &pt;
+      }
+    }
+  }
+  return nullptr;
+}
+
+/**
  * Collect the top-level panel types belonging to \a addon_id, from every space and
  * region type in Blender.
  *
@@ -167,69 +188,71 @@ static void addon_main_region_init(wmWindowManager *wm, ARegion *region)
  * Copying is safe: panels are matched to their type by ID name rather than by pointer
  * (see #panel_find_by_type), and sub-panels are reached through `children`, which still
  * refers to the registered types.
- */
-/**
- * \param r_missing_spacetype: Set to a space type that at least one of this add-on's
- * panels required but was not open anywhere, when the collected list ends up empty for
- * that reason. Left at #SPACE_EMPTY otherwise. Used to explain an empty editor instead
- * of just leaving it blank.
+ *
+ * When nothing qualifies - no add-on chosen, the add-on has no matching panels, or none
+ * of its panels' editors are open anywhere - the list is not left empty. Instead it gets
+ * exactly one entry: this editor's own `ADDON_PT_empty_state` fallback panel, which
+ * explains why in whichever of those ways is actually true. Determining *which* message
+ * applies needs the same "what does this add-on's panel set need" question either way,
+ * so that logic lives once, in Python, read by both the fallback panel's own `draw()`
+ * and the header's info button - see `_addon_supported_spaces()` in `space_addon.py`.
  */
 static void addon_panel_types_collect(const bContext *C,
                                       const char *addon_id,
-                                      ListBaseT<PanelType> *r_paneltypes,
-                                      short *r_missing_spacetype)
+                                      ListBaseT<PanelType> *r_paneltypes)
 {
   BLI_freelistN(r_paneltypes);
-  *r_missing_spacetype = SPACE_EMPTY;
 
-  if (addon_id[0] == '\0') {
-    return;
-  }
+  if (addon_id[0] != '\0') {
+    const bScreen *screen = CTX_wm_screen(C);
 
-  const bScreen *screen = CTX_wm_screen(C);
-
-  for (const std::unique_ptr<SpaceType> &st : BKE_spacetypes_list()) {
-    /* Skip our own space type, so a nested add-on editor cannot recurse. */
-    if (st->spaceid == SPACE_ADDON) {
-      continue;
-    }
-    for (ARegionType &art : st->regiontypes) {
-      /* N-panels live in RGN_TYPE_UI; Properties-tab-style panels (Texture Manager,
-       * Cycles' render/material/light settings) live in RGN_TYPE_WINDOW. Both are
-       * ordinary panel lists as far as ED_region_panels_layout_ex is concerned - it
-       * does not care what region type a PanelType was originally registered under,
-       * only that it is a top-level, non-instanced panel. Other region types (header,
-       * tools, ...) are not panel lists and are excluded. */
-      if (!ELEM(art.regionid, RGN_TYPE_UI, RGN_TYPE_WINDOW)) {
+    for (const std::unique_ptr<SpaceType> &st : BKE_spacetypes_list()) {
+      /* Skip our own space type, so a nested add-on editor cannot recurse. */
+      if (st->spaceid == SPACE_ADDON) {
         continue;
       }
-      for (PanelType &pt : art.paneltypes) {
-        /* Sub-panels are drawn by their parent. */
-        if (pt.parent != nullptr) {
+      for (ARegionType &art : st->regiontypes) {
+        /* N-panels live in RGN_TYPE_UI; Properties-tab-style panels (Texture Manager,
+         * Cycles' render/material/light settings) live in RGN_TYPE_WINDOW. Both are
+         * ordinary panel lists as far as ED_region_panels_layout_ex is concerned - it
+         * does not care what region type a PanelType was originally registered under,
+         * only that it is a top-level, non-instanced panel. Other region types (header,
+         * tools, ...) are not panel lists and are excluded. */
+        if (!ELEM(art.regionid, RGN_TYPE_UI, RGN_TYPE_WINDOW)) {
           continue;
         }
-        if (!STREQ(pt.addon_id, addon_id)) {
-          continue;
+        for (PanelType &pt : art.paneltypes) {
+          /* Sub-panels are drawn by their parent. */
+          if (pt.parent != nullptr) {
+            continue;
+          }
+          if (!STREQ(pt.addon_id, addon_id)) {
+            continue;
+          }
+          /* Skip panels written for an editor that is not open anywhere. Their poll()
+           * typically assumes context members that only that editor's own
+           * #SpaceType.context callback provides (context.material, context.light,
+           * ...), and calling poll() without them raises rather than failing quietly -
+           * it is not written expecting to run outside its own editor. Checking here
+           * means never calling into a context we already know cannot satisfy it. */
+          if (!ELEM(pt.space_type, SPACE_EMPTY, SPACE_ADDON) && screen != nullptr &&
+              BKE_screen_find_big_area(screen, pt.space_type, 0) == nullptr)
+          {
+            continue;
+          }
+          PanelType *pt_copy = MEM_dupalloc(&pt);
+          pt_copy->next = pt_copy->prev = nullptr;
+          BLI_addtail(r_paneltypes, pt_copy);
         }
-        /* Skip panels written for an editor that is not open anywhere. Their poll()
-         * typically assumes context members that only that editor's own #SpaceType.context
-         * callback provides (context.material, context.light, ...), and calling poll()
-         * without them raises rather than failing quietly - it is not written expecting
-         * to run outside its own editor. Checking here means never calling into a context
-         * we already know cannot satisfy it. */
-        if (!ELEM(pt.space_type, SPACE_EMPTY, SPACE_ADDON) && screen != nullptr &&
-            BKE_screen_find_big_area(screen, pt.space_type, 0) == nullptr)
-        {
-          *r_missing_spacetype = pt.space_type;
-          continue;
-        }
-        PanelType *pt_copy = MEM_dupalloc(&pt);
-        pt_copy->next = pt_copy->prev = nullptr;
-        BLI_addtail(r_paneltypes, pt_copy);
-        /* A panel was included after all, so the list is not empty because of a
-         * missing editor. */
-        *r_missing_spacetype = SPACE_EMPTY;
       }
+    }
+  }
+
+  if (BLI_listbase_is_empty(r_paneltypes)) {
+    if (const PanelType *fallback = addon_empty_state_paneltype_find()) {
+      PanelType *pt_copy = MEM_dupalloc(fallback);
+      pt_copy->next = pt_copy->prev = nullptr;
+      BLI_addtail(r_paneltypes, pt_copy);
     }
   }
 }
@@ -302,8 +325,7 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
       saddon->runtime->cached_paneltypes_state != paneltypes_state ||
       saddon->runtime->cached_screen_signature != screen_signature)
   {
-    addon_panel_types_collect(
-        C, saddon->addon_id, &saddon->runtime->paneltypes, &saddon->runtime->missing_spacetype);
+    addon_panel_types_collect(C, saddon->addon_id, &saddon->runtime->paneltypes);
     STRNCPY(saddon->runtime->cached_addon_id, saddon->addon_id);
     saddon->runtime->cached_paneltypes_state = paneltypes_state;
     saddon->runtime->cached_screen_signature = screen_signature;
@@ -348,43 +370,6 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
 /* Note: layout and drawing are deliberately separate callbacks. The region layout pass
  * runs before drawing and establishes the region size and View2D bounds, so doing the
  * layout from the draw callback would draw against stale metrics. */
-
-static void addon_main_region_draw(const bContext *C, ARegion *region)
-{
-  ED_region_panels_draw(C, region);
-
-  const SpaceAddon *saddon = CTX_wm_space_addon(C);
-  if (saddon == nullptr || !BLI_listbase_is_empty(&saddon->runtime->paneltypes)) {
-    return;
-  }
-
-  /* Explain why the editor is empty, rather than leaving it blank with no indication of
-   * whether that is expected. The three cases a user can actually act on: no add-on
-   * chosen yet, the add-on has no sidebar panels at all, or its panels need an editor
-   * that is not currently open. */
-  std::string message;
-  if (saddon->addon_id[0] == '\0') {
-    message = TIP_("Choose an add-on from the editor type menu");
-  }
-  else if (saddon->runtime->missing_spacetype != SPACE_EMPTY) {
-    const SpaceType *needed = BKE_spacetype_from_id(saddon->runtime->missing_spacetype);
-    message = fmt::format(fmt::runtime(TIP_("Open a {} to see this add-on's panels")),
-                          needed ? needed->name : TIP_("compatible editor"));
-  }
-  else {
-    message = fmt::format(fmt::runtime(TIP_("{} has no panels to show here")), saddon->addon_id);
-  }
-
-  /* Left-aligned rather than centered: measuring text width to center it requires
-   * matching the font size #fontstyle_draw_simple sets internally, which is more
-   * coupling than this message is worth. */
-  const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
-  uchar text_color[4];
-  ui::theme::get_color_4ubv(TH_TEXT, text_color);
-  const float margin = UI_UNIT_X * 0.5f;
-  ui::fontstyle_draw_simple(
-      fstyle, margin, region->winy - UI_UNIT_Y, message.c_str(), text_color);
-}
 
 static void addon_main_region_listener(const wmRegionListenerParams * /*params*/) {}
 
@@ -442,11 +427,42 @@ struct AddonEditorEntry {
  * when the entry was added - falling back to the module id for entries added before
  * that field existed. Not #bAddonEditor::module directly: for extensions that id is the
  * full `bl_ext.<repository>.<addon>` import path, not something to show a user.
+ *
+ * Entries whose add-on is currently disabled are omitted entirely, rather than shown
+ * disabled or greyed out: disabling an add-on unregisters its classes, so it would be
+ * dropdown noise pointing at something that cannot draw anything right now anyway. This
+ * does not depend on this editor's own polling/delegation logic at all - "is this
+ * add-on enabled" and "does at least one currently-registered #PanelType have this
+ * addon_id" are the same question, answered by the same scan
+ * #addon_panel_types_collect already performs for the active add-on.
  */
+static bool addon_has_registered_panels(const char *addon_id)
+{
+  for (const std::unique_ptr<SpaceType> &st : BKE_spacetypes_list()) {
+    if (st->spaceid == SPACE_ADDON) {
+      continue;
+    }
+    for (const ARegionType &art : st->regiontypes) {
+      if (!ELEM(art.regionid, RGN_TYPE_UI, RGN_TYPE_WINDOW)) {
+        continue;
+      }
+      for (const PanelType &pt : art.paneltypes) {
+        if (pt.parent == nullptr && STREQ(pt.addon_id, addon_id)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 static Vector<AddonEditorEntry> addon_ids_get()
 {
   Vector<AddonEditorEntry> entries;
   for (const bAddonEditor &entry : U.addon_editors) {
+    if (!addon_has_registered_panels(entry.module)) {
+      continue;
+    }
     entries.append({entry.module, entry.name[0] ? entry.name : entry.module});
   }
   std::sort(entries.begin(), entries.end(), [](const AddonEditorEntry &a, const AddonEditorEntry &b) {
@@ -548,7 +564,7 @@ void ED_spacetype_addon()
 
   art->init = addon_main_region_init;
   art->layout = addon_main_region_layout;
-  art->draw = addon_main_region_draw;
+  art->draw = ED_region_panels_draw;
   art->listener = addon_main_region_listener;
 
   BLI_addhead(&st->regiontypes, art);
