@@ -10408,9 +10408,26 @@ void BPY_class_module_name_get(void *py_class, char *r_module, size_t r_module_m
   PyObject *py_module = PyObject_GetAttrString(static_cast<PyObject *>(py_class), "__module__");
   if (py_module != nullptr) {
     if (const char *module = PyUnicode_AsUTF8(py_module)) {
-      /* Only the top-level package identifies the add-on, so `foo.panels` becomes `foo`. */
-      const char *sep = strchr(module, '.');
-      const size_t len = sep ? size_t(sep - module) : strlen(module);
+      /* Only the top-level package identifies the add-on, so `foo.panels` becomes `foo`.
+       *
+       * Extensions are the exception: they import as `bl_ext.<repository>.<addon>...`,
+       * so the top-level segment alone (`bl_ext`) does not identify the add-on - it
+       * identifies the extensions system itself, and would collide across every
+       * installed extension. For that prefix, keep the first three segments instead. */
+      const bool is_extension = STRPREFIX(module, "bl_ext.");
+      const int segments_to_keep = is_extension ? 3 : 1;
+
+      const char *end = module;
+      for (int i = 0; i < segments_to_keep; i++) {
+        const char *sep = strchr(end, '.');
+        if (sep == nullptr) {
+          end = module + strlen(module);
+          break;
+        }
+        end = sep + 1;
+      }
+      const size_t len = (end > module && *(end - 1) == '.') ? size_t(end - module - 1) :
+                                                                size_t(end - module);
       BLI_strncpy(r_module, module, std::min(len + 1, r_module_maxncpy));
     }
     Py_DECREF(py_module);

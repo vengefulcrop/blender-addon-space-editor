@@ -956,9 +956,44 @@ ScrArea *CTX_wm_area(const bContext *C)
   return static_cast<ScrArea *>(ctx_wm_python_context_get(C, "area", RNA_Area, C->wm.area));
 }
 
-SpaceLink *CTX_wm_space_data(const bContext *C)
+/**
+ * The area that space lookups should resolve against.
+ *
+ * This is the current area, except for the Add-on editor (#SPACE_ADDON), which hosts
+ * panels written for a different editor. Those panels read the space data of the editor
+ * they were written for, both while drawing and later, when a menu is opened from a
+ * panel or an operator's poll runs on a button press. Resolving to an open editor of the
+ * borrowed type keeps all of those consistent.
+ *
+ * Returns the area itself when there is nothing to delegate to, so hosted panels that
+ * require an editor which is not open simply poll false, as they would anyway.
+ */
+static ScrArea *ctx_wm_area_effective(const bContext *C)
 {
   ScrArea *area = CTX_wm_area(C);
+  if (area == nullptr || area->spacetype != SPACE_ADDON) {
+    return area;
+  }
+
+  const SpaceAddon *saddon = static_cast<const SpaceAddon *>(area->spacedata.first);
+  if (saddon == nullptr || saddon->delegate_spacetype == SPACE_EMPTY) {
+    return area;
+  }
+
+  const bScreen *screen = CTX_wm_screen(C);
+  if (screen == nullptr) {
+    return area;
+  }
+
+  /* Resolved by type rather than by a stored pointer, so closing the borrowed editor
+   * cannot leave a dangling reference. */
+  ScrArea *area_delegate = BKE_screen_find_big_area(screen, saddon->delegate_spacetype, 0);
+  return area_delegate ? area_delegate : area;
+}
+
+SpaceLink *CTX_wm_space_data(const bContext *C)
+{
+  ScrArea *area = ctx_wm_area_effective(C);
   return (area) ? static_cast<SpaceLink *>(area->spacedata.first) : nullptr;
 }
 
@@ -999,7 +1034,7 @@ ReportList *CTX_wm_reports(const bContext *C)
 
 View3D *CTX_wm_view3d(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_VIEW3D) {
     return static_cast<View3D *>(area->spacedata.first);
   }
@@ -1021,7 +1056,7 @@ RegionView3D *CTX_wm_region_view3d(const bContext *C)
 
 SpaceText *CTX_wm_space_text(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_TEXT) {
     return static_cast<SpaceText *>(area->spacedata.first);
   }
@@ -1030,7 +1065,7 @@ SpaceText *CTX_wm_space_text(const bContext *C)
 
 SpaceConsole *CTX_wm_space_console(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_CONSOLE) {
     return static_cast<SpaceConsole *>(area->spacedata.first);
   }
@@ -1048,7 +1083,7 @@ SpaceAddon *CTX_wm_space_addon(const bContext *C)
 
 SpaceImage *CTX_wm_space_image(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_IMAGE) {
     return static_cast<SpaceImage *>(area->spacedata.first);
   }
@@ -1057,7 +1092,7 @@ SpaceImage *CTX_wm_space_image(const bContext *C)
 
 SpaceProperties *CTX_wm_space_properties(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_PROPERTIES) {
     return static_cast<SpaceProperties *>(area->spacedata.first);
   }
@@ -1066,7 +1101,7 @@ SpaceProperties *CTX_wm_space_properties(const bContext *C)
 
 SpaceFile *CTX_wm_space_file(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_FILE) {
     return static_cast<SpaceFile *>(area->spacedata.first);
   }
@@ -1075,7 +1110,7 @@ SpaceFile *CTX_wm_space_file(const bContext *C)
 
 SpaceSeq *CTX_wm_space_seq(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_SEQ) {
     return static_cast<SpaceSeq *>(area->spacedata.first);
   }
@@ -1084,7 +1119,7 @@ SpaceSeq *CTX_wm_space_seq(const bContext *C)
 
 SpaceOutliner *CTX_wm_space_outliner(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_OUTLINER) {
     return static_cast<SpaceOutliner *>(area->spacedata.first);
   }
@@ -1093,7 +1128,7 @@ SpaceOutliner *CTX_wm_space_outliner(const bContext *C)
 
 SpaceNla *CTX_wm_space_nla(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_NLA) {
     return static_cast<SpaceNla *>(area->spacedata.first);
   }
@@ -1102,7 +1137,7 @@ SpaceNla *CTX_wm_space_nla(const bContext *C)
 
 SpaceNode *CTX_wm_space_node(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_NODE) {
     return static_cast<SpaceNode *>(area->spacedata.first);
   }
@@ -1111,7 +1146,7 @@ SpaceNode *CTX_wm_space_node(const bContext *C)
 
 SpaceGraph *CTX_wm_space_graph(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_GRAPH) {
     return static_cast<SpaceGraph *>(area->spacedata.first);
   }
@@ -1120,7 +1155,7 @@ SpaceGraph *CTX_wm_space_graph(const bContext *C)
 
 SpaceAction *CTX_wm_space_action(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_ACTION) {
     return static_cast<SpaceAction *>(area->spacedata.first);
   }
@@ -1129,7 +1164,7 @@ SpaceAction *CTX_wm_space_action(const bContext *C)
 
 SpaceInfo *CTX_wm_space_info(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_INFO) {
     return static_cast<SpaceInfo *>(area->spacedata.first);
   }
@@ -1138,7 +1173,7 @@ SpaceInfo *CTX_wm_space_info(const bContext *C)
 
 SpaceUserPref *CTX_wm_space_userpref(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_USERPREF) {
     return static_cast<SpaceUserPref *>(area->spacedata.first);
   }
@@ -1147,7 +1182,7 @@ SpaceUserPref *CTX_wm_space_userpref(const bContext *C)
 
 SpaceClip *CTX_wm_space_clip(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_CLIP) {
     return static_cast<SpaceClip *>(area->spacedata.first);
   }
@@ -1156,7 +1191,7 @@ SpaceClip *CTX_wm_space_clip(const bContext *C)
 
 SpaceTopBar *CTX_wm_space_topbar(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_TOPBAR) {
     return static_cast<SpaceTopBar *>(area->spacedata.first);
   }
@@ -1165,7 +1200,7 @@ SpaceTopBar *CTX_wm_space_topbar(const bContext *C)
 
 SpaceSpreadsheet *CTX_wm_space_spreadsheet(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_SPREADSHEET) {
     return static_cast<SpaceSpreadsheet *>(area->spacedata.first);
   }
@@ -1174,7 +1209,7 @@ SpaceSpreadsheet *CTX_wm_space_spreadsheet(const bContext *C)
 
 SpaceProject *CTX_wm_space_project(const bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
+  ScrArea *area = ctx_wm_area_effective(C);
   if (area && area->spacetype == SPACE_PROJECT) {
     return static_cast<SpaceProject *>(area->spacedata.first);
   }

@@ -1093,6 +1093,27 @@ static void rna_userdef_addon_remove(ReportList *reports, PointerRNA *addon_ptr)
   USERDEF_TAG_DIRTY;
 }
 
+static bAddonEditor *rna_userdef_addon_editor_new()
+{
+  bAddonEditor *entry = MEM_new<bAddonEditor>("bAddonEditor");
+  BLI_addtail(&U.addon_editors, entry);
+  USERDEF_TAG_DIRTY;
+  return entry;
+}
+
+static void rna_userdef_addon_editor_remove(ReportList *reports, PointerRNA *entry_ptr)
+{
+  bAddonEditor *entry = static_cast<bAddonEditor *>(entry_ptr->data);
+  if (BLI_findindex(&U.addon_editors, entry) == -1) {
+    BKE_report(reports, RPT_ERROR, "Add-on editor entry is no longer valid");
+    return;
+  }
+  BLI_remlink(&U.addon_editors, entry);
+  MEM_delete(entry);
+  entry_ptr->invalidate();
+  USERDEF_TAG_DIRTY;
+}
+
 static bPathCompare *rna_userdef_pathcompare_new()
 {
   bPathCompare *path_cmp = MEM_new<bPathCompare>("bPathCompare");
@@ -4603,6 +4624,45 @@ static void rna_def_userdef_addon(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(prop, "rna_Addon_preferences_get", nullptr, nullptr, nullptr);
 }
 
+static void rna_def_userdef_addon_editor(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "AddonEditor", nullptr);
+  RNA_def_struct_sdna(srna, "bAddonEditor");
+  RNA_def_struct_ui_text(
+      srna, "Add-on Editor", "An add-on made available as a full editor type");
+
+  prop = RNA_def_property(srna, "module", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Module", "Add-on module name");
+  RNA_def_struct_name_property(srna, prop);
+}
+
+static void rna_def_userdef_addon_editor_collection(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "AddonEditors");
+  srna = RNA_def_struct(brna, "AddonEditors", nullptr);
+  RNA_def_struct_ui_text(srna, "Add-on Editors", "Add-ons curated as full editor types");
+
+  func = RNA_def_function(srna, "new", "rna_userdef_addon_editor_new");
+  RNA_def_function_flag(func, FUNC_NO_SELF);
+  RNA_def_function_ui_description(func, "Add an add-on to the editor type menu");
+  parm = RNA_def_pointer(func, "addon_editor", "AddonEditor", "", "The new entry");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_userdef_addon_editor_remove");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove an add-on from the editor type menu");
+  parm = RNA_def_pointer(func, "addon_editor", "AddonEditor", "", "Entry to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+}
+
 static void rna_def_userdef_studiolights(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -7817,6 +7877,18 @@ void RNA_def_userdef(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Add-on", "");
   rna_def_userdef_addon_collection(brna, prop);
 
+  prop = RNA_def_property(srna, "addon_editors", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "addon_editors", nullptr);
+  RNA_def_property_struct_type(prop, "AddonEditor");
+  RNA_def_property_ui_text(
+      prop, "Add-on Editors", "Add-ons available as full editor types, see the editor type menu");
+  rna_def_userdef_addon_editor_collection(brna, prop);
+
+  prop = RNA_def_property(srna, "active_addon_editor_index", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "active_addon_editor_index");
+  RNA_def_property_ui_text(prop, "Active Add-on Editor Index", "");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
   prop = RNA_def_property(srna, "autoexec_paths", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "autoexec_paths", nullptr);
   RNA_def_property_struct_type(prop, "PathCompare");
@@ -7957,6 +8029,7 @@ void RNA_def_userdef(BlenderRNA *brna)
   rna_def_userdef_extensions(brna);
   rna_def_userdef_system(brna);
   rna_def_userdef_addon(brna);
+  rna_def_userdef_addon_editor(brna);
   rna_def_userdef_addon_pref(brna);
   rna_def_userdef_studiolights(brna);
   rna_def_userdef_studiolight(brna);

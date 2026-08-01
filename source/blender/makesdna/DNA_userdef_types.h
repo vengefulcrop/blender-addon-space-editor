@@ -589,6 +589,17 @@ struct bAddon {
   struct IDProperty *prop = nullptr;
 };
 
+/**
+ * An add-on the user has chosen to make available as a full editor (see #SpaceAddon).
+ * Curated explicitly, rather than derived from which add-ons happen to be enabled, so
+ * that the editor type menu lists only add-ons the user actually wants there.
+ */
+struct bAddonEditor {
+  struct bAddonEditor *next = nullptr, *prev = nullptr;
+  /** Python module name, matching #bAddon::module and #SpaceAddon::addon_id. */
+  char module[128] = "";
+};
+
 /** #bPathCompare.flag */
 enum ePathCompare_Flag : char {
   USER_PATHCMP_GLOB = (1 << 0),
@@ -1042,6 +1053,12 @@ struct UserDef {
   ListBaseT<struct wmKeyMap> user_keymaps = {nullptr, nullptr};
   ListBaseT<struct wmKeyConfigPref> user_keyconfig_prefs = {nullptr, nullptr};
   ListBaseT<bAddon> addons = {nullptr, nullptr};
+  /** Add-ons curated as full editors, see #bAddonEditor. */
+  ListBaseT<bAddonEditor> addon_editors = {nullptr, nullptr};
+  /** Active index into #addon_editors, for the Preferences UI list. */
+  int active_addon_editor_index = 0;
+  /** Pad to keep subsequent pointer-containing members 8-byte aligned. */
+  char _pad_addon_editor[4] = {};
   ListBaseT<bPathCompare> autoexec_paths = {nullptr, nullptr};
   /**
    * Optional user locations for Python scripts.

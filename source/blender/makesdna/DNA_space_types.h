@@ -1327,6 +1327,9 @@ struct SpaceProject {
 /** \name Add-on Editor
  * \{ */
 
+/** See #SpaceAddon::addon_id. */
+#define SPACE_ADDON_ID_PICK_MARKER '\x01'
+
 /**
  * Hosts the panels of a single add-on or extension as a full editor.
  *
@@ -1349,8 +1352,25 @@ struct SpaceAddon {
    * Empty when no add-on has been chosen yet. Preserved verbatim when the add-on is
    * not enabled, so that re-enabling it restores the editor rather than corrupting
    * the workspace.
+   *
+   * A leading #SPACE_ADDON_ID_PICK_MARKER byte is a transient signal, not a module
+   * name: it means the user just selected "Add an Add-on..." in the editor type menu.
+   * Set by `addon_space_subtype_set` and consumed by `rna_Area_ui_type_update` (the
+   * `set` callback has no #bContext to invoke the picker operator with; `update` does
+   * and runs immediately after). Never left set once that update has run.
    */
   char addon_id[128] = {};
+
+  /**
+   * Editor type this area borrows context from, or #SPACE_EMPTY for none.
+   *
+   * Hosted panels are written for a particular editor and read its `space_data`, so
+   * context lookups made while this area is current resolve against an open editor of
+   * this type instead (see #CTX_wm_space_data). The type is stored rather than a pointer
+   * to the area, so that closing the borrowed editor cannot leave a dangling reference.
+   */
+  short delegate_spacetype = 0;
+  char _pad1[6] = {};
 
   /** Keep last. */
   SpaceAddon_Runtime *runtime = nullptr;
