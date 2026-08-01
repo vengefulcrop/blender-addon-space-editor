@@ -546,7 +546,39 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
  * runs before drawing and establishes the region size and View2D bounds, so doing the
  * layout from the draw callback would draw against stale metrics. */
 
-static void addon_main_region_listener(const wmRegionListenerParams * /*params*/) {}
+/**
+ * Redraw when anything a hosted panel might be reading has changed.
+ *
+ * Every other editor's listener is a tight allow-list, because an editor knows what it
+ * displays. This one does not: it shows whatever panels an arbitrary add-on registered,
+ * reading arbitrary data. Without this the region only ever redrew when something else
+ * forced it - adding a light to the scene left a light-listing panel showing the old
+ * list until the user collapsed and re-expanded it.
+ *
+ * Forwarding to the delegate editor's own listener was the obvious alternative and is
+ * not safe: several listeners cast `params->area->spacedata` to their own space type
+ * (see `space_clip.cc`, `space_action.cc`, `space_buttons.cc`), and this area holds a
+ * #SpaceAddon. Substituting the delegate's area would fix the cast but silently give
+ * those listeners a different area than the region they are tagging. Redrawing a little
+ * too often is the cheaper mistake.
+ *
+ * Excluded are the categories that describe the interface rather than the data behind
+ * it (#NC_WINDOW, #NC_SCREEN, #NC_WORKSPACE, #NC_WM). Panel layout state arrives through
+ * #NC_SPACE, which is kept.
+ */
+static void addon_main_region_listener(const wmRegionListenerParams *params)
+{
+  switch (params->notifier->category) {
+    case NC_WINDOW:
+    case NC_SCREEN:
+    case NC_WORKSPACE:
+    case NC_WM:
+      break;
+    default:
+      ED_region_tag_redraw(params->region);
+      break;
+  }
+}
 
 /** \} */
 
