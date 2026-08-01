@@ -598,6 +598,14 @@ struct bAddonEditor {
   struct bAddonEditor *next = nullptr, *prev = nullptr;
   /** Python module name, matching #bAddon::module and #SpaceAddon::addon_id. */
   char module[128] = "";
+  /**
+   * Human-readable name, e.g. from the add-on's `bl_info["name"]` or an extension's
+   * manifest. Captured once when the entry is added rather than looked up at every
+   * redraw, since only Python (`addon_utils`) can resolve it and the editor type
+   * drop-down is drawn from C. Falls back to #module when empty (e.g. entries added
+   * before this field existed).
+   */
+  char name[128] = "";
 };
 
 /** #bPathCompare.flag */

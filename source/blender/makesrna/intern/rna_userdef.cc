@@ -4637,6 +4637,10 @@ static void rna_def_userdef_addon_editor(BlenderRNA *brna)
   prop = RNA_def_property(srna, "module", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Module", "Add-on module name");
   RNA_def_struct_name_property(srna, prop);
+
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Name", "Human-readable add-on name, shown in the editor type menu");
 }
 
 static void rna_def_userdef_addon_editor_collection(BlenderRNA *brna, PropertyRNA *cprop)

@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import sys
+
 from bpy.types import Header, Operator, Panel, UIList
 from bpy.props import EnumProperty, IntProperty
 
@@ -26,19 +28,38 @@ class ADDON_HT_header(Header):
             layout.label(text="No Add-on Selected")
 
 
+# Blender's own internal script packages, not real add-ons - see scripts/startup/bl_*.
+# Deliberately an exact set, not a "bl_" prefix check: extensions import as
+# bl_ext.<repository>.<addon> (see addon_utils.py's _ext_base_pkg_idname), which shares
+# the prefix but is real, installable add-on content that must not be excluded.
+_INTERNAL_MODULES = {"bl_ui", "bl_operators", "bl_app_templates_system"}
+
+
+def _addon_label(module_name):
+    """Human-readable name for an add-on module, e.g. from bl_info["name"].
+
+    Falls back to the raw module id. That id is a real name for a legacy add-on
+    (e.g. "node_wrangler"), but for an extension it is the full import path
+    (bl_ext.<repository>.<addon>) - a poor fallback, but bl_info should always be
+    present for anything addon_utils can enumerate at all, so this only matters if
+    lookup itself fails.
+    """
+    import addon_utils
+
+    mod = sys.modules.get(module_name)
+    info = addon_utils.module_bl_info(mod) if mod else None
+    return info.get("name", module_name) if info else module_name
+
+
 def _installed_addon_items(self, context):
     import addon_utils
 
     items = []
     for mod in addon_utils.modules():
         module_name = mod.__name__
-        # Blender's own UI lives in bl_ui and friends, not a real add-on. Matches the
-        # equivalent filter in BPY_class_module_name_get on the C side.
-        if module_name.startswith("bl_"):
+        if module_name in _INTERNAL_MODULES:
             continue
-        info = addon_utils.module_bl_info(mod)
-        label = info.get("name", module_name) if info else module_name
-        items.append((module_name, label, module_name))
+        items.append((module_name, _addon_label(module_name), module_name))
 
     items.sort(key=lambda item: item[1].lower())
     return items
@@ -62,6 +83,7 @@ class ADDON_OT_pick_and_host(Operator):
         if not any(entry.module == self.addon_id for entry in editors):
             entry = editors.new()
             entry.module = self.addon_id
+            entry.name = _addon_label(self.addon_id)
 
         area = context.area
         if area is not None and area.type == 'ADDON':
@@ -93,7 +115,7 @@ class ADDON_OT_editor_remove(Operator):
 
 class ADDON_UL_editors(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        layout.label(text=item.module, icon='PLUGIN')
+        layout.label(text=item.name or item.module, icon='PLUGIN')
 
 
 class USERPREF_PT_addon_editors(Panel):

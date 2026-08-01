@@ -417,35 +417,46 @@ static void addon_header_region_draw(const bContext *C, ARegion *region)
  */
 #define ADDON_SUBTYPE_PICK 0x7FFF
 
+/** One curated dropdown entry: the module id used for matching, and the label to show. */
+struct AddonEditorEntry {
+  StringRefNull id;
+  StringRefNull label;
+};
+
 /**
  * The add-ons the user has curated as editors, from #UserDef::addon_editors, sorted by
- * name.
+ * display name.
  *
  * This is deliberately a curated, persistent list rather than "every add-on that
  * currently has panels": that would make the menu grow and shrink as unrelated add-ons
  * are enabled or disabled, and would offer no way to remove an entry the user does not
  * want there. Sorting keeps the order stable for a given set of entries, which matters
  * because the sub-type value is an index into this list.
+ *
+ * #AddonEditorEntry::label is #bAddonEditor::name - the human-readable name captured
+ * when the entry was added - falling back to the module id for entries added before
+ * that field existed. Not #bAddonEditor::module directly: for extensions that id is the
+ * full `bl_ext.<repository>.<addon>` import path, not something to show a user.
  */
-static Vector<StringRefNull> addon_ids_get()
+static Vector<AddonEditorEntry> addon_ids_get()
 {
-  Vector<StringRefNull> ids;
+  Vector<AddonEditorEntry> entries;
   for (const bAddonEditor &entry : U.addon_editors) {
-    ids.append(entry.module);
+    entries.append({entry.module, entry.name[0] ? entry.name : entry.module});
   }
-  std::sort(ids.begin(), ids.end(), [](StringRefNull a, StringRefNull b) {
-    return BLI_strcasecmp(a.c_str(), b.c_str()) < 0;
+  std::sort(entries.begin(), entries.end(), [](const AddonEditorEntry &a, const AddonEditorEntry &b) {
+    return BLI_strcasecmp(a.label.c_str(), b.label.c_str()) < 0;
   });
-  return ids;
+  return entries;
 }
 
 static int addon_space_subtype_get(ScrArea *area)
 {
   const SpaceAddon *saddon = static_cast<const SpaceAddon *>(area->spacedata.first);
-  const Vector<StringRefNull> addon_ids = addon_ids_get();
+  const Vector<AddonEditorEntry> entries = addon_ids_get();
 
-  for (const int i : addon_ids.index_range()) {
-    if (addon_ids[i] == saddon->addon_id) {
+  for (const int i : entries.index_range()) {
+    if (entries[i].id == saddon->addon_id) {
       return i;
     }
   }
@@ -464,9 +475,9 @@ static void addon_space_subtype_set(ScrArea *area, int value)
     return;
   }
 
-  const Vector<StringRefNull> addon_ids = addon_ids_get();
-  if (addon_ids.index_range().contains(value)) {
-    STRNCPY(saddon->addon_id, addon_ids[value].c_str());
+  const Vector<AddonEditorEntry> entries = addon_ids_get();
+  if (entries.index_range().contains(value)) {
+    STRNCPY(saddon->addon_id, entries[value].id.c_str());
   }
   else {
     saddon->addon_id[0] = '\0';
@@ -487,10 +498,12 @@ static void addon_space_subtype_item_extend(bContext * /*C*/,
                                  N_("Choose an installed add-on to add to this menu")};
   RNA_enum_item_add(item, totitem, &pick);
 
-  const Vector<StringRefNull> addon_ids = addon_ids_get();
-  for (const int i : addon_ids.index_range()) {
+  const Vector<AddonEditorEntry> entries = addon_ids_get();
+  for (const int i : entries.index_range()) {
+    /* The identifier string is the module id (needed by rna_Area_ui_type_itemf to
+     * round-trip through set/get); the label is the human-readable name. */
     const EnumPropertyItem entry = {
-        i, addon_ids[i].c_str(), ICON_PLUGIN, addon_ids[i].c_str(), ""};
+        i, entries[i].id.c_str(), ICON_PLUGIN, entries[i].label.c_str(), ""};
     RNA_enum_item_add(item, totitem, &entry);
   }
 }
