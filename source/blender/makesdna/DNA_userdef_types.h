@@ -185,7 +185,12 @@ ENUM_OPERATORS(eUserpref_UI_Flag)
 enum eUserpref_UI_Flag2 : char {
   USER_ALWAYS_SHOW_NUMBER_ARROWS = (1 << 0), /* cleared */
   USER_REGION_OVERLAP = (1 << 1),
-  USER_UIFLAG2_UNUSED_2 = (1 << 2),
+  /** Show Blender's own bundled add-ons (Cycles, Pose Library, ...) in the Add-on
+   * Editor's picker, not just user-installed ones. Off by default: bundled add-ons'
+   * panels are usually gated on scene state (active render engine, pose mode, ...)
+   * that has nothing to do with which editor is open, so they would otherwise appear
+   * pickable and then draw nothing under the picker's own default conditions. */
+  USER_ADDON_EDITOR_SHOW_BUNDLED = (1 << 2),
   USER_UIFLAG2_UNUSED_3 = (1 << 3), /* dirty */
   USER_UIFLAG2_UNUSED_4 = (1 << 4), /* Not cleared! */
   USER_UIFLAG2_PANEL_TABS_COMPACT = (1 << 5),

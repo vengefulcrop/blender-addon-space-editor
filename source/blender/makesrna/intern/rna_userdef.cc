@@ -7893,6 +7893,16 @@ void RNA_def_userdef(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Active Add-on Editor Index", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
+  prop = RNA_def_property(srna, "show_addon_editor_bundled", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "uiflag2", USER_ADDON_EDITOR_SHOW_BUNDLED);
+  RNA_def_property_ui_text(prop,
+                           "Show Bundled Add-ons",
+                           "Also offer Blender's own bundled add-ons (Cycles, Pose "
+                           "Library, ...) in the Add-on Editor's picker. Their panels "
+                           "are usually gated on scene state unrelated to which editor "
+                           "is open (active render engine, pose mode, ...), so they may "
+                           "appear pickable and then show nothing until that state is met");
+
   prop = RNA_def_property(srna, "autoexec_paths", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "autoexec_paths", nullptr);
   RNA_def_property_struct_type(prop, "PathCompare");

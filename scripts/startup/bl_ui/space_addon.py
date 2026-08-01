@@ -191,8 +191,27 @@ def _addon_label(module_name):
     return info.get("name", module_name) if info else module_name
 
 
+def _addon_is_bundled(mod):
+    """Whether mod ships with Blender itself (scripts/addons_core), rather than being
+    separately installed by the user (Extensions, or a legacy user add-ons directory).
+
+    Path-based, not a poll()-outcome guess: bundled add-ons (Cycles, Pose Library, the
+    format importers/exporters, ...) are real add-ons with real panels, but those
+    panels are typically gated on scene state that has nothing to do with which editor
+    is open (active render engine, pose mode, imported asset data, ...) - Cycles' own
+    panels require context.scene.render.engine == 'CYCLES', for instance. Predicting
+    whether such a poll() will pass is exactly the kind of thing this fork has
+    deliberately stayed out of elsewhere (see the design notes on dynamic context
+    routing); this sidesteps that by filtering on a simple, deterministic fact instead.
+    """
+    file = getattr(mod, "__file__", None)
+    return file is not None and "addons_core" in file
+
+
 def _installed_addon_items(self, context):
     import addon_utils
+
+    show_bundled = context.preferences.show_addon_editor_bundled
 
     items = []
     for mod in addon_utils.modules():
@@ -206,6 +225,16 @@ def _installed_addon_items(self, context):
         # (loaded_default, loaded_state) naming; loaded_state is "is it enabled now".
         _loaded_default, loaded_state = addon_utils.check(module_name)
         if not loaded_state:
+            continue
+        if not show_bundled and _addon_is_bundled(mod):
+            continue
+        # Many bundled add-ons (importers/exporters, the extensions platform UI
+        # itself) register only operators and menu entries, no panel at all - hosting
+        # one would always land on the empty-state block, never anything real.
+        # Reuses the exact filter addon_panel_types_collect (space_addon.cc) and the
+        # empty-state message use, so "would this ever draw something" agrees
+        # everywhere rather than being decided three different ways.
+        if not _addon_top_level_panel_space_types(module_name):
             continue
         items.append((module_name, _addon_label(module_name), module_name))
 
@@ -289,6 +318,8 @@ class USERPREF_PT_addon_editors(Panel):
         col.operator("addon.pick_and_host", text="", icon='ADD')
         props = col.operator("addon.editor_remove", text="", icon='REMOVE')
         props.index = context.preferences.active_addon_editor_index
+
+        layout.prop(context.preferences, "show_addon_editor_bundled")
 
 
 classes = (

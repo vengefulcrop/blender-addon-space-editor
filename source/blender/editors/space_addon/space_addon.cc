@@ -481,7 +481,16 @@ static int addon_space_subtype_get(ScrArea *area)
       return i;
     }
   }
-  return 0;
+  /* No match - either nothing has been chosen yet, or the hosted add-on's curated
+   * entry was filtered out (disabled; see addon_ids_get()). Falling back to a real
+   * index (0) here would be wrong twice over: it collides with the packed value of
+   * the "Add-ons" heading item (RNA_ENUM_ITEM_HEADING sets value = 0), which has no
+   * icon, so the area-type button would show blank; and if an add-on genuinely is
+   * hosted but merely hidden from the list, index 0 would falsely present a
+   * different, unrelated add-on as the current selection. The "Add an Add-on..."
+   * entry has neither problem: it is reserved (ADDON_SUBTYPE_PICK, never a real
+   * index) and has its own icon. */
+  return ADDON_SUBTYPE_PICK;
 }
 
 static void addon_space_subtype_set(ScrArea *area, int value)
