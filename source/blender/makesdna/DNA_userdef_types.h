@@ -185,6 +185,7 @@ ENUM_OPERATORS(eUserpref_UI_Flag)
 enum eUserpref_UI_Flag2 : char {
   USER_ALWAYS_SHOW_NUMBER_ARROWS = (1 << 0), /* cleared */
   USER_REGION_OVERLAP = (1 << 1),
+  /* cleared */
   /** Show Blender's own bundled add-ons (Cycles, Pose Library, ...) in the Add-on
    * Editor's picker, not just user-installed ones. Off by default: bundled add-ons'
    * panels are usually gated on scene state (active render engine, pose mode, ...)

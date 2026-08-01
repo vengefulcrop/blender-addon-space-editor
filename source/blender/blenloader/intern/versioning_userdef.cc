@@ -1794,6 +1794,13 @@ void blo_do_versions_userdef(UserDef *userdef)
   }
 #endif
 
+  if (!USER_VERSION_ATLEAST(503, 11)) {
+    /* This bit held #USER_TRACKPAD_NATURAL until 2.92, which removed the preference
+     * without clearing it, so preferences older than that can still have it set. Clear
+     * before reusing it for #USER_ADDON_EDITOR_SHOW_BUNDLED, whose default is off. */
+    userdef->uiflag2 &= ~USER_ADDON_EDITOR_SHOW_BUNDLED;
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.
