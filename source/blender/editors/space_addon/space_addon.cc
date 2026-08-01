@@ -194,8 +194,13 @@ static void addon_panel_types_collect(const bContext *C,
       continue;
     }
     for (ARegionType &art : st->regiontypes) {
-      /* Only the side-bar hosts add-on panels, matching where they appear natively. */
-      if (art.regionid != RGN_TYPE_UI) {
+      /* N-panels live in RGN_TYPE_UI; Properties-tab-style panels (Texture Manager,
+       * Cycles' render/material/light settings) live in RGN_TYPE_WINDOW. Both are
+       * ordinary panel lists as far as ED_region_panels_layout_ex is concerned - it
+       * does not care what region type a PanelType was originally registered under,
+       * only that it is a top-level, non-instanced panel. Other region types (header,
+       * tools, ...) are not panel lists and are excluded. */
+      if (!ELEM(art.regionid, RGN_TYPE_UI, RGN_TYPE_WINDOW)) {
         continue;
       }
       for (PanelType &pt : art.paneltypes) {

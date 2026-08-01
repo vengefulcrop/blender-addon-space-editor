@@ -8,6 +8,19 @@ from bpy.types import Header, Operator, Panel, UIList
 from bpy.props import EnumProperty, IntProperty
 
 
+def _addon_display_name(context, addon_id):
+    """Curated display name for addon_id, falling back to the raw id.
+
+    The fallback matters for an area hosting an add-on that was never added through
+    the picker (e.g. addon_id set directly via Python), which has no curated
+    bAddonEditor entry to read a name from.
+    """
+    for entry in context.preferences.addon_editors:
+        if entry.module == addon_id:
+            return entry.name or addon_id
+    return addon_id
+
+
 class ADDON_HT_header(Header):
     bl_space_type = 'ADDON'
 
@@ -23,7 +36,7 @@ class ADDON_HT_header(Header):
         space = context.area.spaces.active
         layout.separator_spacer()
         if space.addon_id:
-            layout.label(text=space.addon_id)
+            layout.label(text=_addon_display_name(context, space.addon_id))
         else:
             layout.label(text="No Add-on Selected")
 
