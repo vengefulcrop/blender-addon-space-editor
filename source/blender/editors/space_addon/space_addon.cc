@@ -179,6 +179,40 @@ static const PanelType *addon_empty_state_paneltype_find()
 }
 
 /**
+ * Detach any panel in \a panels bound to \a pt, so that freeing \a pt cannot leave a
+ * dangling #Panel::type.
+ *
+ * A null type is not a broken state: it is exactly what a panel whose type went away
+ * is left in, and what every panel starts as when read from a file (see
+ * #direct_link_panel_list). The panel code checks for it throughout, and
+ * #panel_begin re-binds the panel as soon as a type of the same ID name shows up again.
+ *
+ * Only top-level panels are considered, because only their types are copies owned by
+ * this editor. Sub-panel #Panel::type points at the registered child type reached
+ * through #PanelType::children, which this editor never owns or frees.
+ */
+static void addon_panels_type_detach(ListBaseT<Panel> *panels, const PanelType *pt)
+{
+  for (Panel &panel : *panels) {
+    if (panel.type == pt) {
+      panel.type = nullptr;
+    }
+  }
+}
+
+/** Unlink and return the entry of \a lb with the given ID name, or null. */
+static PanelType *addon_paneltype_pop(ListBaseT<PanelType> *lb, const char *idname)
+{
+  for (PanelType &pt : *lb) {
+    if (STREQ(pt.idname, idname)) {
+      BLI_remlink(lb, &pt);
+      return &pt;
+    }
+  }
+  return nullptr;
+}
+
+/**
  * Collect the top-level panel types belonging to \a addon_id, from every space and
  * region type in Blender.
  *
@@ -188,6 +222,13 @@ static const PanelType *addon_empty_state_paneltype_find()
  * Copying is safe: panels are matched to their type by ID name rather than by pointer
  * (see #panel_find_by_type), and sub-panels are reached through `children`, which still
  * refers to the registered types.
+ *
+ * A copy that is still wanted is *reused* rather than freed and reallocated, with its
+ * contents refreshed from the registered type. This keeps #Panel::type valid across a
+ * re-collection, which is what preserves the panels in \a region_panels - their
+ * collapsed state, drag order and `layout.panel()` sub-section states. Rebuilding the
+ * list from scratch instead would strand every panel on a freed type, and those panels
+ * carry the layout the user arranged and the file restored.
  *
  * When nothing qualifies - no add-on chosen, the add-on has no matching panels, or none
  * of its panels' editors are open anywhere - the list is not left empty. Instead it gets
@@ -199,9 +240,28 @@ static const PanelType *addon_empty_state_paneltype_find()
  */
 static void addon_panel_types_collect(const bContext *C,
                                       const char *addon_id,
-                                      ListBaseT<PanelType> *r_paneltypes)
+                                      ListBaseT<PanelType> *r_paneltypes,
+                                      ListBaseT<Panel> *region_panels)
 {
-  BLI_freelistN(r_paneltypes);
+  /* Set aside rather than freed: entries still wanted are moved back across below, and
+   * whatever is left over at the end is what genuinely went away. */
+  ListBaseT<PanelType> previous = *r_paneltypes;
+  *r_paneltypes = {nullptr, nullptr};
+
+  /** Reuse the previous copy of \a pt if there is one, else make a new one. */
+  auto paneltype_copy_get = [&](const PanelType &pt) {
+    PanelType *pt_copy = addon_paneltype_pop(&previous, pt.idname);
+    if (pt_copy == nullptr) {
+      pt_copy = MEM_dupalloc(&pt);
+    }
+    else {
+      /* Refresh: re-enabling or reloading an add-on registers a whole new #PanelType, so
+       * a reused copy's callbacks and `children` list would otherwise be stale. */
+      *pt_copy = pt;
+    }
+    pt_copy->next = pt_copy->prev = nullptr;
+    BLI_addtail(r_paneltypes, pt_copy);
+  };
 
   if (addon_id[0] != '\0') {
     const bScreen *screen = CTX_wm_screen(C);
@@ -240,9 +300,7 @@ static void addon_panel_types_collect(const bContext *C,
           {
             continue;
           }
-          PanelType *pt_copy = MEM_dupalloc(&pt);
-          pt_copy->next = pt_copy->prev = nullptr;
-          BLI_addtail(r_paneltypes, pt_copy);
+          paneltype_copy_get(pt);
         }
       }
     }
@@ -250,11 +308,19 @@ static void addon_panel_types_collect(const bContext *C,
 
   if (BLI_listbase_is_empty(r_paneltypes)) {
     if (const PanelType *fallback = addon_empty_state_paneltype_find()) {
-      PanelType *pt_copy = MEM_dupalloc(fallback);
-      pt_copy->next = pt_copy->prev = nullptr;
-      BLI_addtail(r_paneltypes, pt_copy);
+      paneltype_copy_get(*fallback);
     }
   }
+
+  /* Left over: types that are no longer wanted, because the add-on changed, was disabled
+   * or reloaded, or the editor its panels need was closed. Detach their panels before
+   * freeing, so nothing is left pointing at freed memory. The panels themselves are kept
+   * - the type may well come back, and #panel_begin re-binds them by ID name when it
+   * does, restoring the layout rather than starting over. */
+  for (const PanelType &pt : previous) {
+    addon_panels_type_detach(region_panels, &pt);
+  }
+  BLI_freelistN(&previous);
 }
 
 /**
@@ -325,14 +391,16 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
       saddon->runtime->cached_paneltypes_state != paneltypes_state ||
       saddon->runtime->cached_screen_signature != screen_signature)
   {
-    addon_panel_types_collect(C, saddon->addon_id, &saddon->runtime->paneltypes);
+    addon_panel_types_collect(
+        C, saddon->addon_id, &saddon->runtime->paneltypes, &region->panels);
     STRNCPY(saddon->runtime->cached_addon_id, saddon->addon_id);
     saddon->runtime->cached_paneltypes_state = paneltypes_state;
     saddon->runtime->cached_screen_signature = screen_signature;
 
-    /* The existing panels reference the copies that were just freed. Drop them; the
-     * layout below recreates them from the new panel types. */
-    BKE_area_region_panels_free(&region->panels);
+    /* Note: `region->panels` is deliberately left alone. Collection above reuses the
+     * panel type copies, so panels stay bound to live types and keep the state the user
+     * arranged or the file restored. Panels whose type really did go away were detached
+     * there, and are re-bound by ID name if it comes back. */
   }
 
   /* Borrow context from a real editor of the type these panels expect, so that panels
