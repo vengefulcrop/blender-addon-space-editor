@@ -4081,6 +4081,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   BLO_read_struct_list(reader, wmKeyConfigPref, &user->user_keyconfig_prefs);
   BLO_read_struct_list(reader, bUserMenu, &user->user_menus);
   BLO_read_struct_list(reader, bAddon, &user->addons);
+  BLO_read_struct_list(reader, bAddonEditor, &user->addon_editors);
   BLO_read_struct_list(reader, bPathCompare, &user->autoexec_paths);
   BLO_read_struct_list(reader, bUserScriptDirectory, &user->script_directories);
   BLO_read_struct_list(reader, bUserAssetLibrary, &user->asset_libraries);
