@@ -17,8 +17,10 @@
 #include "MEM_guardedalloc.h"
 
 #include <algorithm>
+#include <string>
 
 #include "BLI_listbase.hh"
+#include "BLI_set.hh"
 #include "BLI_string.hh"
 #include "BLI_string_utf8.hh"
 #include "BLI_vector.hh"
@@ -179,6 +181,67 @@ static const PanelType *addon_empty_state_paneltype_find()
 }
 
 /**
+ * Panels whose `poll()` raised while hosted here, by ID name.
+ *
+ * Hosting panels outside the editor they were written for means a raising `poll()` is an
+ * expected condition, not an anomaly - the panel is reading something its own editor
+ * would have provided. Blender prints the traceback and carries on, which is fine once
+ * and catastrophic at redraw rate: on Windows the console applies backpressure and the
+ * main thread blocks in `WriteConsoleW`, hanging Blender with no CPU use and no crash
+ * log. So a panel that raises is recorded here and not polled again.
+ *
+ * Global rather than per-area because "this panel cannot survive being polled out of
+ * context" is a property of the panel, not of the area showing it. Cleared whenever the
+ * registered panel types change (see #BKE_paneltypes_state_get), so re-enabling or
+ * reloading an add-on gives its panels a clean slate.
+ */
+static Set<std::string> &addon_poll_failed_get()
+{
+  static Set<std::string> failed;
+  return failed;
+}
+
+/**
+ * Call a Python panel's `poll()`, treating an exception as "do not show".
+ *
+ * Mirrors `panel_poll` in `rna_ui.cc`, with the one difference that matters here: the
+ * return code of #StructRNA::ext `call` is checked instead of discarded, which is the
+ * only way to tell that the callback raised rather than returned false.
+ */
+static bool addon_panel_poll_guarded(const bContext *C, PanelType *pt)
+{
+  if (addon_poll_failed_get().contains(pt->idname)) {
+    return false;
+  }
+
+  PointerRNA ptr = RNA_pointer_create_discrete(nullptr, pt->rna_ext.srna, nullptr);
+  FunctionRNA *func = RNA_struct_find_function(ptr.type, "poll");
+  if (func == nullptr) {
+    return true;
+  }
+
+  ParameterList list;
+  RNA_parameter_list_create(&list, &ptr, func);
+  RNA_parameter_set_lookup(&list, "context", &C);
+  const int err = pt->rna_ext.call(const_cast<bContext *>(C), &ptr, func, &list);
+
+  bool visible = false;
+  if (err == 0) {
+    void *ret;
+    RNA_parameter_get_lookup(&list, "visible", &ret);
+    visible = *static_cast<bool *>(ret);
+  }
+  else {
+    /* Already reported once, by the call above. Remember it so the next redraw does not
+     * report it again. */
+    addon_poll_failed_get().add(pt->idname);
+  }
+
+  RNA_parameter_list_free(&list);
+  return visible;
+}
+
+/**
  * Detach any panel in \a panels bound to \a pt, so that freeing \a pt cannot leave a
  * dangling #Panel::type.
  *
@@ -240,6 +303,7 @@ static PanelType *addon_paneltype_pop(ListBaseT<PanelType> *lb, const char *idna
  */
 static void addon_panel_types_collect(const bContext *C,
                                       const char *addon_id,
+                                      const short delegate_spacetype,
                                       ListBaseT<PanelType> *r_paneltypes,
                                       ListBaseT<Panel> *region_panels)
 {
@@ -260,12 +324,15 @@ static void addon_panel_types_collect(const bContext *C,
       *pt_copy = pt;
     }
     pt_copy->next = pt_copy->prev = nullptr;
+    /* Re-installed after every refresh, since the assignment above restores the
+     * registered callback. Only for Python panels: a C panel's poll cannot raise. */
+    if (pt_copy->poll != nullptr && pt_copy->rna_ext.call != nullptr) {
+      pt_copy->poll = addon_panel_poll_guarded;
+    }
     BLI_addtail(r_paneltypes, pt_copy);
   };
 
   if (addon_id[0] != '\0') {
-    const bScreen *screen = CTX_wm_screen(C);
-
     for (const std::unique_ptr<SpaceType> &st : BKE_spacetypes_list()) {
       /* Skip our own space type, so a nested add-on editor cannot recurse. */
       if (st->spaceid == SPACE_ADDON) {
@@ -289,14 +356,24 @@ static void addon_panel_types_collect(const bContext *C,
           if (!STREQ(pt.addon_id, addon_id)) {
             continue;
           }
-          /* Skip panels written for an editor that is not open anywhere. Their poll()
-           * typically assumes context members that only that editor's own
-           * #SpaceType.context callback provides (context.material, context.light,
-           * ...), and calling poll() without them raises rather than failing quietly -
-           * it is not written expecting to run outside its own editor. Checking here
-           * means never calling into a context we already know cannot satisfy it. */
-          if (!ELEM(pt.space_type, SPACE_EMPTY, SPACE_ADDON) && screen != nullptr &&
-              BKE_screen_find_big_area(screen, pt.space_type, 0) == nullptr)
+          /* Only panels the chosen delegate can actually satisfy.
+           *
+           * A panel's poll() typically assumes context members that only its own
+           * editor's #SpaceType.context callback provides (context.material,
+           * context.light, ...), and raises rather than failing quietly when they are
+           * absent - it was not written expecting to run elsewhere. Since the whole area
+           * borrows from a single editor (#SpaceAddon::delegate_spacetype), a panel
+           * written for any other editor would be polled against the wrong space data.
+           *
+           * That is not hypothetical: ucupaint registers for both the Node Editor and
+           * the 3D Viewport, and with both open its NODE_PT_YPaintUI was polled against
+           * a SpaceView3D and raised on every redraw.
+           *
+           * So panels for other editors are dropped rather than shown and broken. When
+           * the user can choose which of an add-on's editor slots an area hosts, this
+           * filter becomes that choice instead of an automatic one. */
+          if (!ELEM(pt.space_type, SPACE_EMPTY, SPACE_ADDON) &&
+              pt.space_type != delegate_spacetype)
           {
             continue;
           }
@@ -324,39 +401,56 @@ static void addon_panel_types_collect(const bContext *C,
 }
 
 /**
- * Find an editor to borrow context from while the hosted panels are laid out.
+ * The editor type this area will borrow context from, or #SPACE_EMPTY for none.
  *
  * Most of what an add-on panel reads (`object`, `scene`, `mode`, selection, and so on)
  * is resolved at the screen level and works in any editor. What does not is
  * `space_data` and `region_data`: those come straight from the area
  * (see #CTX_wm_space_data), so a panel polling for `space.type == 'NODE_EDITOR'`, or
- * reading `space_data.overlay`, would fail here.
+ * reading `space_data.overlay`, would fail here. Rather than let those panels vanish,
+ * the area and region are temporarily swapped for a real editor of the type the panel
+ * was written for. This is the same approach as operator context overrides.
  *
- * Rather than let those panels silently vanish, the area and region are temporarily
- * swapped for a real editor of the type the panel was written for, for the duration of
- * the layout. This is the same approach as operator context overrides.
+ * Resolved *before* collection rather than from its result, because the whole area can
+ * only borrow from one editor: collection then keeps just the panels this delegate can
+ * satisfy, instead of gathering panels for several editors and letting whichever lost
+ * be polled against the wrong space data (see #addon_panel_types_collect).
  *
- * Returns null when no suitable editor is open, in which case such panels still poll
- * `false` and are skipped, exactly as before.
+ * The first declared type with an editor open wins. That is the same rule as before -
+ * scan order over registered panel types - kept deliberately, so this fix changes which
+ * panels are *shown* without also changing which editor gets borrowed. Choosing between
+ * candidates is a decision for the user, not for a heuristic here.
  */
-static ScrArea *addon_context_delegate_find(const bContext *C, const ListBaseT<PanelType> &pts)
+static short addon_delegate_spacetype_find(const bContext *C, const char *addon_id)
 {
-  bScreen *screen = CTX_wm_screen(C);
-  if (screen == nullptr) {
-    return nullptr;
+  const bScreen *screen = CTX_wm_screen(C);
+  if (screen == nullptr || addon_id[0] == '\0') {
+    return SPACE_EMPTY;
   }
 
-  /* Panels declare the editor they were written for, so borrow that one. */
-  for (const PanelType &pt : pts) {
-    if (ELEM(pt.space_type, SPACE_EMPTY, SPACE_ADDON)) {
+  for (const std::unique_ptr<SpaceType> &st : BKE_spacetypes_list()) {
+    if (st->spaceid == SPACE_ADDON) {
       continue;
     }
-    if (ScrArea *area = BKE_screen_find_big_area(screen, pt.space_type, 0)) {
-      return area;
+    for (const ARegionType &art : st->regiontypes) {
+      if (!ELEM(art.regionid, RGN_TYPE_UI, RGN_TYPE_WINDOW)) {
+        continue;
+      }
+      for (const PanelType &pt : art.paneltypes) {
+        if (pt.parent != nullptr || !STREQ(pt.addon_id, addon_id)) {
+          continue;
+        }
+        if (ELEM(pt.space_type, SPACE_EMPTY, SPACE_ADDON)) {
+          continue;
+        }
+        if (BKE_screen_find_big_area(screen, pt.space_type, 0) != nullptr) {
+          return pt.space_type;
+        }
+      }
     }
   }
 
-  return nullptr;
+  return SPACE_EMPTY;
 }
 
 /**
@@ -391,8 +485,20 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
       saddon->runtime->cached_paneltypes_state != paneltypes_state ||
       saddon->runtime->cached_screen_signature != screen_signature)
   {
-    addon_panel_types_collect(
-        C, saddon->addon_id, &saddon->runtime->paneltypes, &region->panels);
+    if (saddon->runtime->cached_paneltypes_state != paneltypes_state) {
+      /* An add-on was enabled, disabled or reloaded: give panels that previously raised
+       * another chance, since the code behind them may well have changed. */
+      addon_poll_failed_get().clear();
+    }
+
+    /* Resolved first: collection keeps only the panels this delegate can satisfy. */
+    saddon->delegate_spacetype = addon_delegate_spacetype_find(C, saddon->addon_id);
+
+    addon_panel_types_collect(C,
+                              saddon->addon_id,
+                              saddon->delegate_spacetype,
+                              &saddon->runtime->paneltypes,
+                              &region->panels);
     STRNCPY(saddon->runtime->cached_addon_id, saddon->addon_id);
     saddon->runtime->cached_paneltypes_state = paneltypes_state;
     saddon->runtime->cached_screen_signature = screen_signature;
@@ -403,19 +509,20 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
      * there, and are re-bound by ID name if it comes back. */
   }
 
-  /* Borrow context from a real editor of the type these panels expect, so that panels
-   * polling on the editor type or reading space data still draw. Restored below.
+  /* Borrow context from a real editor of the delegated type, so that panels polling on
+   * the editor type or reading space data still draw. Restored below.
    *
-   * The delegated type is also recorded on the space, so that context lookups made
+   * The type itself is recorded on the space (above), so that context lookups made
    * outside this layout pass - menus opened from a panel, operator polls when a button
    * is pressed - resolve the same way. Without that, a panel would draw but its buttons
    * would silently do nothing. */
   bContext *C_mutable = const_cast<bContext *>(C);
   ScrArea *area_orig = CTX_wm_area(C);
   ARegion *region_orig = CTX_wm_region(C);
-  ScrArea *area_delegate = addon_context_delegate_find(C, saddon->runtime->paneltypes);
-
-  saddon->delegate_spacetype = area_delegate ? area_delegate->spacetype : SPACE_EMPTY;
+  bScreen *screen = CTX_wm_screen(C);
+  ScrArea *area_delegate = (screen != nullptr && saddon->delegate_spacetype != SPACE_EMPTY) ?
+                               BKE_screen_find_big_area(screen, saddon->delegate_spacetype, 0) :
+                               nullptr;
 
   if (area_delegate != nullptr) {
     CTX_wm_area_set(C_mutable, area_delegate);
