@@ -298,7 +298,10 @@ static void rna_Area_ui_type_update(bContext *C, PointerRNA *ptr)
   if (area->spacetype == SPACE_ADDON) {
     SpaceAddon *saddon = static_cast<SpaceAddon *>(area->spacedata.first);
     if (saddon->addon_id[0] == SPACE_ADDON_ID_PICK_MARKER) {
-      saddon->addon_id[0] = '\0';
+      /* Strip the marker, leaving the add-on that was hosted before the picker opened.
+       * The picker overwrites it on success; on cancel the area keeps what it had. */
+      memmove(saddon->addon_id, saddon->addon_id + 1, sizeof(saddon->addon_id) - 1);
+      saddon->addon_id[sizeof(saddon->addon_id) - 1] = '\0';
       WM_operator_name_call(
           C, "ADDON_OT_pick_and_host", wm::OpCallContext::InvokeDefault, nullptr, nullptr);
     }

@@ -705,10 +705,25 @@ static void addon_space_subtype_set(ScrArea *area, int value)
   SpaceAddon *saddon = static_cast<SpaceAddon *>(area->spacedata.first);
 
   if (value == ADDON_SUBTYPE_PICK) {
-    /* Only leave the marker; #rna_Area_ui_type_update reads it and invokes the picker
-     * operator, since it has the #bContext this `set` callback does not. */
+    /* Prefix the marker onto the current add-on rather than replacing it.
+     *
+     * "Add an Add-on..." only opens a picker; the user may well cancel it, and doing
+     * that used to leave the area empty because the id had already been overwritten
+     * with the marker alone. Carrying the id along means cancelling changes nothing.
+     * #rna_Area_ui_type_update strips the prefix back off before invoking the picker,
+     * since it has the #bContext this `set` callback does not. */
+    char addon_id_prev[sizeof(saddon->addon_id)];
+    STRNCPY(addon_id_prev, saddon->addon_id);
+
     saddon->addon_id[0] = SPACE_ADDON_ID_PICK_MARKER;
-    saddon->addon_id[1] = '\0';
+    if (strlen(addon_id_prev) + 2 <= sizeof(saddon->addon_id)) {
+      BLI_strncpy(saddon->addon_id + 1, addon_id_prev, sizeof(saddon->addon_id) - 1);
+    }
+    else {
+      /* Only reachable for an id filling the whole field; restoring a truncated one
+       * would be worse than restoring none. */
+      saddon->addon_id[1] = '\0';
+    }
     return;
   }
 
