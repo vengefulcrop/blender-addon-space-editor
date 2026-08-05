@@ -438,9 +438,16 @@ static void addon_panel_types_collect(const bContext *C,
  * satisfy, instead of gathering panels for several editors and letting whichever lost
  * be polled against the wrong space data (see #addon_panel_types_collect).
  *
- * \a preferred_spacetype (#SpaceAddon::preferred_delegate_spacetype) wins when an editor
- * of that type happens to be open; otherwise, or when it is #SPACE_EMPTY (no explicit
- * choice), falls back to the first declared type with an editor open, by the order
+ * \a preferred_spacetype (#SpaceAddon::preferred_delegate_spacetype), when set, is
+ * honored strictly: if an editor of that type is open it wins, and if not, this
+ * returns #SPACE_EMPTY rather than substituting a different declared type - showing
+ * the add-on's panels for an editor the user did not choose would be a silent,
+ * surprising override of an explicit choice. The empty result still reaches the user:
+ * collection ends up with nothing to show, and #ADDON_PT_empty_state explains
+ * specifically which editor the current choice needs (see space_addon.py).
+ *
+ * Only when there is no explicit choice (#SPACE_EMPTY) does this fall back to the
+ * first declared type with an editor open, by the order
  * #BKE_paneltypes_addon_space_types_get returns them - kept from before this parameter
  * existed, so an add-on with only one declared type behaves exactly as it always has.
  */
@@ -453,10 +460,10 @@ static short addon_delegate_spacetype_find(const bContext *C,
     return SPACE_EMPTY;
   }
 
-  if (preferred_spacetype != SPACE_EMPTY &&
-      BKE_screen_find_big_area(screen, preferred_spacetype, 0) != nullptr)
-  {
-    return preferred_spacetype;
+  if (preferred_spacetype != SPACE_EMPTY) {
+    return (BKE_screen_find_big_area(screen, preferred_spacetype, 0) != nullptr) ?
+               preferred_spacetype :
+               SPACE_EMPTY;
   }
 
   for (const short space_type : BKE_paneltypes_addon_space_types_get(addon_id)) {

@@ -249,10 +249,25 @@ class ADDON_PT_empty_state(Panel):
 
     def draw(self, context):
         layout = self.layout
-        addon_id = context.area.spaces.active.addon_id
+        space = context.area.spaces.active
+        addon_id = space.addon_id
 
         if not addon_id:
             layout.label(text="Choose an add-on from the editor type menu", icon='INFO')
+            return
+
+        # An explicit, unsatisfied choice (addon_delegate_spacetype_find in space_addon.cc
+        # honors it strictly rather than substituting a different editor type) gets its
+        # own message naming that one editor specifically, rather than the generic list
+        # below - the user picked one editor, so "here's what you need" should say which.
+        preferred = space.preferred_delegate_spacetype
+        if preferred != 'EMPTY' and preferred not in {area.type for area in context.screen.areas}:
+            name, icon = _space_type_icon_name(preferred)
+            col = layout.column(align=True)
+            col.label(text="This panel requires the following to be open", icon='INFO')
+            col.label(text="in the workspace:")
+            col.separator()
+            col.label(text=name, icon=icon)
             return
 
         triples = _addon_supported_spaces(addon_id)
