@@ -291,8 +291,7 @@ static void addon_panel_owner_get(const PanelType &pt, char *r_addon_id, size_t 
 #ifdef WITH_PYTHON
   BPY_class_module_name_get(pt.rna_ext.data, r_addon_id, r_addon_id_maxncpy);
 #else
-  (void)pt;
-  (void)r_addon_id_maxncpy;
+  UNUSED_VARS(pt, r_addon_id_maxncpy);
 #endif
 }
 
@@ -710,9 +709,10 @@ static Vector<AddonEditorEntry> addon_ids_get()
     }
     entries.append({entry.module, entry.name[0] ? entry.name : entry.module});
   }
-  std::sort(entries.begin(), entries.end(), [](const AddonEditorEntry &a, const AddonEditorEntry &b) {
-    return BLI_strcasecmp(a.label.c_str(), b.label.c_str()) < 0;
-  });
+  std::sort(
+      entries.begin(), entries.end(), [](const AddonEditorEntry &a, const AddonEditorEntry &b) {
+        return BLI_strcasecmp(a.label.c_str(), b.label.c_str()) < 0;
+      });
   return entries;
 }
 
