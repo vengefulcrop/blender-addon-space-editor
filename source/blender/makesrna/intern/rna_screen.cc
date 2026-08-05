@@ -523,6 +523,20 @@ static void rna_def_area(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_Area_ui_type_update");
 
+  /* Generic per-area context-resolution override - see #ScrArea::context_delegate_spacetype.
+   * Exposed read-only so Python-drawn UI (presently only the Add-on editor) can show which
+   * real editor an area is currently borrowing context from, without duplicating the
+   * borrowing logic itself. 'EMPTY' means the area is not delegating. */
+  prop = RNA_def_property(srna, "context_delegate_spacetype", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "context_delegate_spacetype");
+  RNA_def_property_enum_items(prop, rna_enum_space_type_items);
+  RNA_def_property_enum_default(prop, SPACE_EMPTY);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop,
+                           "Context Delegate Editor Type",
+                           "Editor type this area currently borrows context from, "
+                           "or 'EMPTY' when it is not delegating");
+
   prop = RNA_def_property(srna, "x", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "totrct.xmin");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

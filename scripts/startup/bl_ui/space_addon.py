@@ -71,20 +71,32 @@ def _addon_top_level_panel_space_types(addon_id):
     return seen
 
 
+def _space_type_icon_name(space_type):
+    """(name, icon) for an Area.type enum identifier, e.g. ('NODE_EDITOR') ->
+    ("Node Editor", 'NODE_EDITOR'). Falls back to the raw identifier if it is not a
+    real, user-facing editor type (shouldn't normally happen for a panel's own
+    bl_space_type, but this is display code - fail soft, not with a KeyError).
+
+    The single place both the header's delegate icon and the supported-editors list
+    resolve an editor type to what the user actually sees, so the two cannot drift
+    apart on which icon or name represents a given type.
+    """
+    item = bpy.types.Area.bl_rna.properties["type"].enum_items.get(space_type)
+    if item is None:
+        return space_type, 'NONE'
+    return item.name, item.icon
+
+
 def _addon_supported_spaces(addon_id):
-    """Human-readable names of every editor type addon_id's top-level panels declare.
+    """(name, icon) pairs for every editor type addon_id's top-level panels declare.
 
     Computed independently here in Python because both consumers of this list - the
     header's info button and the empty-state panel below - are Python-drawn, and
     neither needs anything the C++ side doesn't already expose more simply than a new
     RNA collection would.
     """
-    type_enum = bpy.types.Area.bl_rna.properties["type"].enum_items
-    names = []
-    for space_type in _addon_top_level_panel_space_types(addon_id):
-        item = type_enum.get(space_type)
-        names.append(item.name if item else space_type)
-    return sorted(names, key=str.lower)
+    pairs = [_space_type_icon_name(st) for st in _addon_top_level_panel_space_types(addon_id)]
+    return sorted(pairs, key=lambda pair: pair[0].lower())
 
 
 def _addon_has_open_delegate(context, addon_id):
@@ -113,7 +125,7 @@ class ADDON_OT_supported_editors_info(Operator):
     @classmethod
     def description(cls, context, properties):
         addon_id = context.area.spaces.active.addon_id
-        names = _addon_supported_spaces(addon_id)
+        names = [name for name, _icon in _addon_supported_spaces(addon_id)]
         if not names:
             return "No editor-type information available"
         return "Panels shown here need one of: " + ", ".join(names)
@@ -140,6 +152,16 @@ class ADDON_HT_header(Header):
         # Not context.space_data: while an add-on is hosted, that resolves to the editor
         # this area borrows context from, not to this SpaceAddon.
         space = context.area.spaces.active
+
+        # The editor the currently drawn panels actually belong to - read from the area
+        # itself (see #ScrArea::context_delegate_spacetype) rather than recomputed here,
+        # so this always matches what C++ is actually delegating to, not just what the
+        # add-on's panels declare (#_addon_supported_spaces lists every editor type the
+        # add-on *could* use; only one of them, if any, is the one currently borrowed).
+        delegate_type = context.area.context_delegate_spacetype
+        if delegate_type != 'EMPTY':
+            _name, icon = _space_type_icon_name(delegate_type)
+            layout.label(text="", icon=icon)
 
         # Only when something is actually drawing: an empty region already explains
         # itself via ADDON_PT_empty_state, which covers the same information.
@@ -176,8 +198,8 @@ class ADDON_PT_empty_state(Panel):
             layout.label(text="Choose an add-on from the editor type menu", icon='INFO')
             return
 
-        names = _addon_supported_spaces(addon_id)
-        if not names:
+        pairs = _addon_supported_spaces(addon_id)
+        if not pairs:
             layout.label(
                 text=_addon_display_name(context, addon_id) + " has no panels to show here",
                 icon='INFO')
@@ -187,8 +209,8 @@ class ADDON_PT_empty_state(Panel):
         col.label(text="This add-on's panels require one of the following", icon='INFO')
         col.label(text="editor types to be present in the workspace:")
         col.separator()
-        for name in names:
-            col.label(text="•  " + name)
+        for name, icon in pairs:
+            col.label(text=name, icon=icon)
 
 
 # Blender's own internal script packages, not real add-ons - see scripts/startup/bl_*.
