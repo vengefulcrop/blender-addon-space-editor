@@ -379,6 +379,20 @@ class ADDON_OT_pick_and_host(Operator):
             entry.module = self.addon_id
             entry.name = _addon_label(self.addon_id)
 
+            # New entries always land at the end (editors.new() appends), and the menu
+            # shows only the first max_visible in that same addition order (see
+            # addon_ids_get() in space_addon.cc) - so this entry is hidden there exactly
+            # when it pushed the count past the cap. Still added to Preferences either
+            # way, and the area below still switches to it regardless - the cap only
+            # affects the menu, not what can be curated or hosted.
+            max_visible = context.preferences.addon_editor_max_visible
+            if max_visible and len(editors) > max_visible:
+                self.report(
+                    {'INFO'},
+                    f"Editor type menu shows the first {max_visible} add-ons - "
+                    f"\"{entry.name}\" was added but stays hidden there until an earlier "
+                    "entry is removed, or the limit is raised in Preferences > Add-ons")
+
         area = context.area
         if area is not None and area.type == 'ADDON':
             area.spaces.active.addon_id = self.addon_id
@@ -437,6 +451,7 @@ class USERPREF_PT_addon_editors(Panel):
         props.index = context.preferences.active_addon_editor_index
 
         layout.prop(context.preferences, "show_addon_editor_bundled")
+        layout.prop(context.preferences, "addon_editor_max_visible")
 
 
 classes = (

@@ -1071,8 +1071,15 @@ struct UserDef {
   ListBaseT<bAddonEditor> addon_editors = {nullptr, nullptr};
   /** Active index into #addon_editors, for the Preferences UI list. */
   int active_addon_editor_index = 0;
+  /**
+   * How many #addon_editors entries, in the order they were added, show in the
+   * editor-type drop-down - 0 means show all. #addon_editors itself is never capped or
+   * reordered by this: every curated entry stays in the list and in Preferences, just
+   * not necessarily in the drop-down once there are more than this many.
+   */
+  short addon_editor_max_visible = 0;
   /** Pad to keep subsequent pointer-containing members 8-byte aligned. */
-  char _pad_addon_editor[4] = {};
+  char _pad_addon_editor[2] = {};
   ListBaseT<bPathCompare> autoexec_paths = {nullptr, nullptr};
   /**
    * Optional user locations for Python scripts.

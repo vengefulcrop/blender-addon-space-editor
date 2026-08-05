@@ -7903,6 +7903,16 @@ void RNA_def_userdef(BlenderRNA *brna)
                            "is open (active render engine, pose mode, ...), so they may "
                            "appear pickable and then show nothing until that state is met");
 
+  prop = RNA_def_property(srna, "addon_editor_max_visible", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "addon_editor_max_visible");
+  RNA_def_property_range(prop, 0, SHRT_MAX);
+  RNA_def_property_ui_text(prop,
+                           "Max Visible Add-on Editors",
+                           "How many curated add-ons show in the editor type menu, in the "
+                           "order they were added - 0 for no limit. Add-ons beyond this stay "
+                           "in the list below and can still be managed here, they are just "
+                           "not offered in the menu");
+
   prop = RNA_def_property(srna, "autoexec_paths", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "autoexec_paths", nullptr);
   RNA_def_property_struct_type(prop, "PathCompare");

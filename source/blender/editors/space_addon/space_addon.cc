@@ -16,7 +16,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <algorithm>
 #include <string>
 
 #include "BLI_listbase.hh"
@@ -656,14 +655,21 @@ struct AddonEditorEntry {
 };
 
 /**
- * The add-ons the user has curated as editors, from #UserDef::addon_editors, sorted by
- * display name.
+ * The add-ons the user has curated as editors, from #UserDef::addon_editors, in the
+ * order they were added, capped to #UserDef::addon_editor_max_visible if it is set
+ * (0 means no cap).
  *
  * This is deliberately a curated, persistent list rather than "every add-on that
  * currently has panels": that would make the menu grow and shrink as unrelated add-ons
  * are enabled or disabled, and would offer no way to remove an entry the user does not
- * want there. Sorting keeps the order stable for a given set of entries, which matters
- * because the sub-type value is an index into this list.
+ * want there. Addition order (not sorted) keeps the order stable for a given set of
+ * entries, which matters because the sub-type value is an index into this list.
+ *
+ * The cap only ever shortens what this function *returns*; it never touches
+ * #UserDef::addon_editors itself. An entry landing past the cap stays fully present and
+ * editable in Preferences - it is simply not offered in the editor-type menu until an
+ * earlier entry is removed or the cap is raised. See `ADDON_OT_pick_and_host`
+ * (space_addon.py) for where adding a new entry past the cap is reported to the user.
  *
  * #AddonEditorEntry::label is #bAddonEditor::name - the human-readable name captured
  * when the entry was added - falling back to the module id for entries added before
@@ -676,7 +682,8 @@ struct AddonEditorEntry {
  * does not depend on this editor's own polling/delegation logic at all - "is this
  * add-on enabled" and "does at least one currently-registered #PanelType have this
  * addon_id" are the same question, answered by the same scan
- * #addon_panel_types_collect already performs for the active add-on.
+ * #addon_panel_types_collect already performs for the active add-on. A disabled entry
+ * does not consume a cap slot, since it would never have shown regardless.
  */
 static bool addon_has_registered_panels(const char *addon_id)
 {
@@ -711,11 +718,10 @@ static Vector<AddonEditorEntry> addon_ids_get()
       continue;
     }
     entries.append({entry.module, entry.name[0] ? entry.name : entry.module});
+    if (U.addon_editor_max_visible > 0 && entries.size() >= U.addon_editor_max_visible) {
+      break;
+    }
   }
-  std::sort(
-      entries.begin(), entries.end(), [](const AddonEditorEntry &a, const AddonEditorEntry &b) {
-        return BLI_strcasecmp(a.label.c_str(), b.label.c_str()) < 0;
-      });
   return entries;
 }
 
