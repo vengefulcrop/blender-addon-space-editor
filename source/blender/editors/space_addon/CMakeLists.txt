@@ -28,6 +28,9 @@ set(LIB
 )
 
 if(WITH_PYTHON)
+  list(APPEND INC
+    ../../python
+  )
   add_definitions(-DWITH_PYTHON)
 endif()
 

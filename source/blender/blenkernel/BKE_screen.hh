@@ -381,13 +381,6 @@ struct PanelType {
   char category[BKE_ST_MAXNAME];
   /** For work-spaces to selectively show. */
   char owner_id[128];
-  /**
-   * Top-level Python module the panel was registered from, e.g. `node_wrangler`.
-   * Filled automatically at registration, empty for panels defined in C.
-   * Used by the Add-on editor (#SpaceAddon) to collect a single add-on's panels.
-   * Distinct from #owner_id, which is the user-set work-space filter.
-   */
-  char addon_id[128];
   /** Parent idname for sub-panels. */
   char parent_id[BKE_ST_MAXNAME];
   /** Boolean property identifier of the panel custom data. Used to draw a highlighted border. */

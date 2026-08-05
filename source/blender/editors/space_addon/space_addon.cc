@@ -42,6 +42,10 @@
 
 #include "BLO_read_write.hh"
 
+#ifdef WITH_PYTHON
+#  include "BPY_extern.hh"
+#endif
+
 #include "addon_intern.hh" /* own include */
 
 namespace blender {
@@ -274,6 +278,25 @@ static PanelType *addon_paneltype_pop(ListBaseT<PanelType> *lb, const char *idna
 }
 
 /**
+ * The add-on (top-level Python module) that registered \a pt, or an empty string for a
+ * panel defined in C or one whose owning class cannot be determined.
+ *
+ * Deliberately not a field on #PanelType itself: computing it here, on demand, keeps
+ * every other panel registration in Blender free of this editor's own bookkeeping - the
+ * attribution only ever needs to be known while this editor is collecting panels.
+ */
+static void addon_panel_owner_get(const PanelType &pt, char *r_addon_id, size_t r_addon_id_maxncpy)
+{
+  r_addon_id[0] = '\0';
+#ifdef WITH_PYTHON
+  BPY_class_module_name_get(pt.rna_ext.data, r_addon_id, r_addon_id_maxncpy);
+#else
+  (void)pt;
+  (void)r_addon_id_maxncpy;
+#endif
+}
+
+/**
  * Collect the top-level panel types belonging to \a addon_id, from every space and
  * region type in Blender.
  *
@@ -351,7 +374,9 @@ static void addon_panel_types_collect(const bContext *C,
           if (pt.parent != nullptr) {
             continue;
           }
-          if (!STREQ(pt.addon_id, addon_id)) {
+          char pt_addon_id[128];
+          addon_panel_owner_get(pt, pt_addon_id, sizeof(pt_addon_id));
+          if (!STREQ(pt_addon_id, addon_id)) {
             continue;
           }
           /* Only panels the chosen delegate can actually satisfy.
@@ -435,7 +460,12 @@ static short addon_delegate_spacetype_find(const bContext *C, const char *addon_
         continue;
       }
       for (const PanelType &pt : art.paneltypes) {
-        if (pt.parent != nullptr || !STREQ(pt.addon_id, addon_id)) {
+        if (pt.parent != nullptr) {
+          continue;
+        }
+        char pt_addon_id[128];
+        addon_panel_owner_get(pt, pt_addon_id, sizeof(pt_addon_id));
+        if (!STREQ(pt_addon_id, addon_id)) {
           continue;
         }
         if (ELEM(pt.space_type, SPACE_EMPTY, SPACE_ADDON)) {
@@ -657,7 +687,12 @@ static bool addon_has_registered_panels(const char *addon_id)
         continue;
       }
       for (const PanelType &pt : art.paneltypes) {
-        if (pt.parent == nullptr && STREQ(pt.addon_id, addon_id)) {
+        if (pt.parent != nullptr) {
+          continue;
+        }
+        char pt_addon_id[128];
+        addon_panel_owner_get(pt, pt_addon_id, sizeof(pt_addon_id));
+        if (STREQ(pt_addon_id, addon_id)) {
           return true;
         }
       }

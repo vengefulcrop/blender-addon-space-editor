@@ -76,10 +76,6 @@ const EnumPropertyItem rna_enum_uilist_layout_type_items[] = {
 #  include "BKE_report.hh"
 #  include "BKE_screen.hh"
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.hh"
-#  endif
-
 #  include "ED_asset_library.hh"
 #  include "ED_asset_shelf.hh"
 
@@ -403,11 +399,6 @@ static StructRNA *rna_Panel_register(Main *bmain,
   else {
     pt->description = nullptr;
   }
-
-  /* Record the owning add-on, so the Add-on editor can collect a single add-on's panels. */
-#ifdef WITH_PYTHON
-  BPY_class_module_name_get(data, pt->addon_id, sizeof(pt->addon_id));
-#endif
 
   pt->rna_ext.srna = RNA_def_struct_ptr(&RNA_blender_rna_get(), pt->idname, RNA_Panel);
   RNA_def_struct_translation_context(pt->rna_ext.srna, pt->translation_context);
