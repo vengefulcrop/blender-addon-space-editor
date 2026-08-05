@@ -88,15 +88,17 @@ def _space_type_icon_name(space_type):
 
 
 def _addon_supported_spaces(addon_id):
-    """(name, icon) pairs for every editor type addon_id's top-level panels declare.
+    """(space_type, name, icon) triples for every editor type addon_id's top-level
+    panels declare - space_type is the raw Area.type identifier (e.g. 'NODE_EDITOR'),
+    the same one #SpaceAddon.preferred_delegate_spacetype's items use.
 
-    Computed independently here in Python because both consumers of this list - the
-    header's info button and the empty-state panel below - are Python-drawn, and
-    neither needs anything the C++ side doesn't already expose more simply than a new
-    RNA collection would.
+    Computed independently here in Python because every consumer of this list - the
+    header's info button, the editor-type picker, and the empty-state panel below - is
+    Python-drawn, and none of them need anything the C++ side doesn't already expose
+    more simply than a new RNA collection would.
     """
-    pairs = [_space_type_icon_name(st) for st in _addon_top_level_panel_space_types(addon_id)]
-    return sorted(pairs, key=lambda pair: pair[0].lower())
+    triples = [(st, *_space_type_icon_name(st)) for st in _addon_top_level_panel_space_types(addon_id)]
+    return sorted(triples, key=lambda triple: triple[1].lower())
 
 
 def _addon_has_open_delegate(context, addon_id):
@@ -125,7 +127,7 @@ class ADDON_OT_supported_editors_info(Operator):
     @classmethod
     def description(cls, context, properties):
         addon_id = context.area.spaces.active.addon_id
-        names = [name for name, _icon in _addon_supported_spaces(addon_id)]
+        names = [name for _space_type, name, _icon in _addon_supported_spaces(addon_id)]
         if not names:
             return "No editor-type information available"
         return "Panels shown here need one of: " + ", ".join(names)
@@ -137,6 +139,49 @@ class ADDON_OT_supported_editors_info(Operator):
     def execute(self, context):
         # Exists for its tooltip; nothing to do on click.
         return {'CANCELLED'}
+
+
+def _preferred_delegate_spacetype_items(self, context):
+    """Items for ADDON_OT_set_preferred_delegate_spacetype.spacetype.
+
+    Labels are prefixed with the add-on's own display name (e.g. "Lumos: UV/Image
+    Editor") - purely a Python-side presentation choice: the identifiers themselves
+    are exactly #SpaceAddon.preferred_delegate_spacetype's own (the plain
+    #rna_enum_space_type_items set, same one Area.type uses), so setting this property
+    always writes a value the real, C-defined property already accepts. "No
+    preference" is stored as 'EMPTY' (#SPACE_EMPTY) - that identifier's own meaning on
+    this property - shown to the user as "Auto" rather than "Empty".
+    """
+    space = context.area.spaces.active
+    display_name = _addon_display_name(context, space.addon_id)
+
+    items = [(
+        'EMPTY',
+        display_name + ": Auto",
+        "Borrow context from whichever supported editor is open, preferring the first "
+        "one found",
+        'NONE',
+        0,
+    )]
+    for i, (space_type, name, icon) in enumerate(_addon_supported_spaces(space.addon_id), start=1):
+        items.append((space_type, f"{display_name}: {name}", "", icon, i))
+    return items
+
+
+class ADDON_OT_set_preferred_delegate_spacetype(Operator):
+    """Choose which of this add-on's editor types to borrow context from"""
+    bl_idname = "addon.set_preferred_delegate_spacetype"
+    bl_label = "Editor Type"
+    bl_options = {'INTERNAL'}
+
+    spacetype: EnumProperty(
+        name="Editor Type",
+        items=_preferred_delegate_spacetype_items,
+    )
+
+    def execute(self, context):
+        context.area.spaces.active.preferred_delegate_spacetype = self.spacetype
+        return {'FINISHED'}
 
 
 class ADDON_HT_header(Header):
@@ -153,15 +198,27 @@ class ADDON_HT_header(Header):
         # this area borrows context from, not to this SpaceAddon.
         space = context.area.spaces.active
 
-        # The editor the currently drawn panels actually belong to - read from the area
-        # itself (see #ScrArea::context_delegate_spacetype) rather than recomputed here,
-        # so this always matches what C++ is actually delegating to, not just what the
-        # add-on's panels declare (#_addon_supported_spaces lists every editor type the
-        # add-on *could* use; only one of them, if any, is the one currently borrowed).
-        delegate_type = context.area.context_delegate_spacetype
-        if delegate_type != 'EMPTY':
-            _name, icon = _space_type_icon_name(delegate_type)
-            layout.label(text="", icon=icon)
+        # A second dropdown, the same pattern as the 3D Viewport's interaction-mode
+        # selector next to its own editor-type button: only meaningful once there is an
+        # actual choice to make. With 0 or 1 declared editor types "Auto" and the one
+        # explicit choice (if any) are equivalent, so the dropdown would offer nothing.
+        #
+        # Drawn through our own operator rather than a direct layout.prop() on the real
+        # property: the property's own item list (the plain rna_enum_space_type_items
+        # set, same as Area.type) carries Blender's plain editor names ("UV/Image
+        # Editor"), and prefixing them with the add-on's name ("Lumos: UV/Image
+        # Editor") is easier to read here in the header - a presentation choice, so it
+        # lives here in Python rather than in the C-side item list.
+        if space.addon_id and len(_addon_top_level_panel_space_types(space.addon_id)) > 1:
+            display_name = _addon_display_name(context, space.addon_id)
+            current = space.preferred_delegate_spacetype
+            if current == 'EMPTY':
+                text, icon = display_name + ": Auto", 'NONE'
+            else:
+                name, icon = _space_type_icon_name(current)
+                text = f"{display_name}: {name}"
+            layout.operator_menu_enum(
+                "addon.set_preferred_delegate_spacetype", "spacetype", text=text, icon=icon)
 
         # Only when something is actually drawing: an empty region already explains
         # itself via ADDON_PT_empty_state, which covers the same information.
@@ -198,8 +255,8 @@ class ADDON_PT_empty_state(Panel):
             layout.label(text="Choose an add-on from the editor type menu", icon='INFO')
             return
 
-        pairs = _addon_supported_spaces(addon_id)
-        if not pairs:
+        triples = _addon_supported_spaces(addon_id)
+        if not triples:
             layout.label(
                 text=_addon_display_name(context, addon_id) + " has no panels to show here",
                 icon='INFO')
@@ -209,7 +266,7 @@ class ADDON_PT_empty_state(Panel):
         col.label(text="This add-on's panels require one of the following", icon='INFO')
         col.label(text="editor types to be present in the workspace:")
         col.separator()
-        for name, icon in pairs:
+        for _space_type, name, icon in triples:
             col.label(text=name, icon=icon)
 
 
@@ -369,6 +426,7 @@ class USERPREF_PT_addon_editors(Panel):
 
 classes = (
     ADDON_OT_supported_editors_info,
+    ADDON_OT_set_preferred_delegate_spacetype,
     ADDON_HT_header,
     ADDON_PT_empty_state,
     ADDON_OT_pick_and_host,

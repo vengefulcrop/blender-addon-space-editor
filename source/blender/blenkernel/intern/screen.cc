@@ -374,6 +374,52 @@ uint64_t BKE_paneltypes_state_get()
   return g_paneltypes_state;
 }
 
+Vector<short> BKE_paneltypes_addon_space_types_get(const char *addon_id)
+{
+  Vector<short> space_types;
+  if (addon_id[0] == '\0') {
+    return space_types;
+  }
+
+  for (const std::unique_ptr<SpaceType> &st : get_space_types()) {
+    /* The Add-on editor is a host, not something addon_id's own panels could declare. */
+    if (st->spaceid == SPACE_ADDON) {
+      continue;
+    }
+    for (const ARegionType &art : st->regiontypes) {
+      /* N-panels live in RGN_TYPE_UI; Properties-tab-style panels live in
+       * RGN_TYPE_WINDOW. Matches #addon_panel_types_collect's own filter
+       * (editors/space_addon/space_addon.cc), which this helper exists to share. */
+      if (!ELEM(art.regionid, RGN_TYPE_UI, RGN_TYPE_WINDOW)) {
+        continue;
+      }
+      for (const PanelType &pt : art.paneltypes) {
+        /* Sub-panels are drawn by their parent; their own declared type doesn't matter
+         * for "what editor does addon_id need". */
+        if (pt.parent != nullptr) {
+          continue;
+        }
+        if (ELEM(pt.space_type, SPACE_EMPTY, SPACE_ADDON)) {
+          continue;
+        }
+
+        char pt_addon_id[128] = {'\0'};
+#ifdef WITH_PYTHON
+        BPY_class_module_name_get(pt.rna_ext.data, pt_addon_id, sizeof(pt_addon_id));
+#endif
+        if (!STREQ(pt_addon_id, addon_id)) {
+          continue;
+        }
+
+        if (!space_types.contains(pt.space_type)) {
+          space_types.append(pt.space_type);
+        }
+      }
+    }
+  }
+  return space_types;
+}
+
 void BKE_spacetype_register(std::unique_ptr<SpaceType> st)
 {
   /* sanity check */

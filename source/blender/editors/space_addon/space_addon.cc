@@ -438,42 +438,30 @@ static void addon_panel_types_collect(const bContext *C,
  * satisfy, instead of gathering panels for several editors and letting whichever lost
  * be polled against the wrong space data (see #addon_panel_types_collect).
  *
- * The first declared type with an editor open wins. That is the same rule as before -
- * scan order over registered panel types - kept deliberately, so this fix changes which
- * panels are *shown* without also changing which editor gets borrowed. Choosing between
- * candidates is a decision for the user, not for a heuristic here.
+ * \a preferred_spacetype (#SpaceAddon::preferred_delegate_spacetype) wins when an editor
+ * of that type happens to be open; otherwise, or when it is #SPACE_EMPTY (no explicit
+ * choice), falls back to the first declared type with an editor open, by the order
+ * #BKE_paneltypes_addon_space_types_get returns them - kept from before this parameter
+ * existed, so an add-on with only one declared type behaves exactly as it always has.
  */
-static short addon_delegate_spacetype_find(const bContext *C, const char *addon_id)
+static short addon_delegate_spacetype_find(const bContext *C,
+                                           const char *addon_id,
+                                           const short preferred_spacetype)
 {
   const bScreen *screen = CTX_wm_screen(C);
-  if (screen == nullptr || addon_id[0] == '\0') {
+  if (screen == nullptr) {
     return SPACE_EMPTY;
   }
 
-  for (const std::unique_ptr<SpaceType> &st : BKE_spacetypes_list()) {
-    if (st->spaceid == SPACE_ADDON) {
-      continue;
-    }
-    for (const ARegionType &art : st->regiontypes) {
-      if (!ELEM(art.regionid, RGN_TYPE_UI, RGN_TYPE_WINDOW)) {
-        continue;
-      }
-      for (const PanelType &pt : art.paneltypes) {
-        if (pt.parent != nullptr) {
-          continue;
-        }
-        char pt_addon_id[128];
-        addon_panel_owner_get(pt, pt_addon_id, sizeof(pt_addon_id));
-        if (!STREQ(pt_addon_id, addon_id)) {
-          continue;
-        }
-        if (ELEM(pt.space_type, SPACE_EMPTY, SPACE_ADDON)) {
-          continue;
-        }
-        if (BKE_screen_find_big_area(screen, pt.space_type, 0) != nullptr) {
-          return pt.space_type;
-        }
-      }
+  if (preferred_spacetype != SPACE_EMPTY &&
+      BKE_screen_find_big_area(screen, preferred_spacetype, 0) != nullptr)
+  {
+    return preferred_spacetype;
+  }
+
+  for (const short space_type : BKE_paneltypes_addon_space_types_get(addon_id)) {
+    if (BKE_screen_find_big_area(screen, space_type, 0) != nullptr) {
+      return space_type;
     }
   }
 
@@ -503,15 +491,24 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
   ScrArea *area_orig = CTX_wm_area(C);
   SpaceAddon *saddon = static_cast<SpaceAddon *>(area_orig->spacedata.first);
 
-  /* Rebuild when the add-on changed, when panel types were registered or removed (an
-   * add-on being enabled, disabled or reloaded), or when the set of open editor types
-   * changed (collection depends on which editors are available to delegate to, see
-   * #addon_panel_types_collect). */
+  /* Resolved every layout - cheap, one scan over the add-on's own (usually few) declared
+   * types - rather than only on cache miss below, so that changing
+   * #SpaceAddon::preferred_delegate_spacetype (nothing else invalidates the cache for
+   * that) is picked up on the very next redraw it triggers. */
+  const short delegate_spacetype = addon_delegate_spacetype_find(
+      C, saddon->addon_id, saddon->preferred_delegate_spacetype);
+
+  /* Rebuild collection when the add-on changed, when panel types were registered or
+   * removed (an add-on being enabled, disabled or reloaded), when the set of open editor
+   * types changed (collection depends on which editors are available to delegate to, see
+   * #addon_panel_types_collect), or when the resolved delegate itself changed (the user
+   * picked a different preference, or the editor it needed just opened or closed). */
   const uint64_t paneltypes_state = BKE_paneltypes_state_get();
   const uint64_t screen_signature = addon_screen_signature_get(CTX_wm_screen(C));
   if (!STREQ(saddon->runtime->cached_addon_id, saddon->addon_id) ||
       saddon->runtime->cached_paneltypes_state != paneltypes_state ||
-      saddon->runtime->cached_screen_signature != screen_signature)
+      saddon->runtime->cached_screen_signature != screen_signature ||
+      area_orig->context_delegate_spacetype != delegate_spacetype)
   {
     if (saddon->runtime->cached_paneltypes_state != paneltypes_state) {
       /* An add-on was enabled, disabled or reloaded: give panels that previously raised
@@ -519,11 +516,10 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
       addon_poll_failed_get().clear();
     }
 
-    /* Resolved first: collection keeps only the panels this delegate can satisfy.
-     * Recorded on the area itself - a generic per-area override, see
+    /* Recorded on the area itself - a generic per-area override, see
      * #ScrArea::context_delegate_spacetype - rather than on this space, so that
      * #blenkernel's context resolution needs no knowledge of this editor. */
-    area_orig->context_delegate_spacetype = addon_delegate_spacetype_find(C, saddon->addon_id);
+    area_orig->context_delegate_spacetype = delegate_spacetype;
 
     addon_panel_types_collect(C,
                               saddon->addon_id,

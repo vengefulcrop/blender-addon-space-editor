@@ -1362,11 +1362,19 @@ struct SpaceAddon {
   char addon_id[128] = {};
 
   /**
-   * The delegated editor type lives on #ScrArea::context_delegate_spacetype instead of
-   * here - it is a generic per-area capability, not something specific to this space
-   * type, even though this editor is presently the only thing that sets it.
+   * eSpace_Type (SPACE_FOO) the user explicitly chose to borrow context from, when this
+   * add-on declares panels for more than one editor type - #SPACE_EMPTY for "no
+   * preference", which keeps the automatic behaviour of
+   * #addon_delegate_spacetype_find (borrow whichever declared type has an editor open
+   * first, by scan order). Ignored, rather than enforced, when no editor of this type
+   * happens to be open: falls back to that same automatic behaviour instead of leaving
+   * the area delegating to nothing.
+   *
+   * The *resolved* type actually in use lives on #ScrArea::context_delegate_spacetype
+   * instead of here, same as before - this field only ever records the user's request.
    */
-  char _pad1[8] = {};
+  short preferred_delegate_spacetype = 0;
+  char _pad1[6] = {};
 
   /** Keep last. */
   SpaceAddon_Runtime *runtime = nullptr;

@@ -798,6 +798,16 @@ void BKE_spacetype_register(std::unique_ptr<SpaceType> st);
 void BKE_paneltypes_tag_changed();
 /** Current panel types revision, see #BKE_paneltypes_tag_changed. */
 uint64_t BKE_paneltypes_state_get();
+/**
+ * Distinct #PanelType::space_type values among the currently registered top-level panels
+ * attributed to \a addon_id (by top-level Python module, see #BPY_class_module_name_get).
+ * Empty if \a addon_id is empty or has no such panels.
+ *
+ * Shared by the Add-on editor's own delegate resolution and the `preferred_delegate_spacetype`
+ * RNA property's dynamic item list, so the two cannot disagree on which editor types an
+ * add-on declares panels for.
+ */
+Vector<short> BKE_paneltypes_addon_space_types_get(const char *addon_id);
 bool BKE_spacetype_exists(int spaceid);
 /** Only for quitting blender. */
 void BKE_spacetypes_free();

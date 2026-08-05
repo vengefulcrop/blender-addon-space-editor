@@ -9648,6 +9648,24 @@ static void rna_def_space_addon(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Add-on", "Python module name of the add-on whose panels are shown in this editor");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_CHANGED, nullptr);
+
+  /* Plain sdna get/set over the ordinary, static #rna_enum_space_type_items - the same
+   * list #Area.type uses - rather than a dynamic itemf restricted to this add-on's own
+   * declared types. "Restricted to what this add-on supports, prefixed with its name"
+   * is presentation Python already owns (`_preferred_delegate_spacetype_items` in
+   * space_addon.py, which drives the header dropdown); this property only needs to
+   * stay a valid, resolvable store for whatever Python reads or writes on it, and
+   * #SPACE_EMPTY's own "Empty" label/identifier double as "no preference" (Python
+   * shows that state as "Auto" without needing a distinct stored value for it). */
+  prop = RNA_def_property(srna, "preferred_delegate_spacetype", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "preferred_delegate_spacetype");
+  RNA_def_property_enum_items(prop, rna_enum_space_type_items);
+  RNA_def_property_enum_default(prop, SPACE_EMPTY);
+  RNA_def_property_ui_text(prop,
+                           "Editor Type",
+                           "Which of this add-on's supported editor types to borrow context "
+                           "from, when it declares panels for more than one");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_CHANGED, nullptr);
 }
 
 void RNA_def_space(BlenderRNA *brna)
