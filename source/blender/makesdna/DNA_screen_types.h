@@ -645,7 +645,22 @@ struct ScrArea {
    * runtime variable, updated by executing operators.
    */
   short region_active_win = 0;
-  char _pad[2] = {};
+
+  /**
+   * eSpace_Type (SPACE_FOO), or SPACE_EMPTY for none.
+   *
+   * When set, context lookups made while this area is current (#CTX_wm_space_data and
+   * the other typed `CTX_wm_space_*` accessors) resolve against the first open area of
+   * this type instead - see #ctx_wm_area_effective. The type is stored rather than a
+   * pointer to the area, so that closing the borrowed editor cannot leave a dangling
+   * reference.
+   *
+   * A generic per-area override rather than a per-space-type one, so that resolving it
+   * requires no knowledge of which space type uses it. Populated today only by the
+   * Add-on editor (#SpaceAddon), which borrows a real, visible editor's context to draw
+   * that editor's own panels; nothing elsewhere in Blender sets it.
+   */
+  short context_delegate_spacetype = 0;
 
   /** Callbacks for this space type. */
   struct SpaceType *type = nullptr;

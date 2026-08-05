@@ -112,13 +112,11 @@ static int /*eContextResult*/ addon_context(const bContext *C,
                                             bContextDataResult *result)
 {
   ScrArea *area = CTX_wm_area(C);
-  const SpaceAddon *saddon = area ? static_cast<const SpaceAddon *>(area->spacedata.first) :
-                                    nullptr;
-  if (saddon == nullptr || saddon->delegate_spacetype == SPACE_EMPTY) {
+  if (area == nullptr || area->context_delegate_spacetype == SPACE_EMPTY) {
     return CTX_RESULT_MEMBER_NOT_FOUND;
   }
 
-  SpaceType *st = BKE_spacetype_from_id(saddon->delegate_spacetype);
+  SpaceType *st = BKE_spacetype_from_id(area->context_delegate_spacetype);
   if (st == nullptr || st->context == nullptr) {
     return CTX_RESULT_MEMBER_NOT_FOUND;
   }
@@ -362,7 +360,7 @@ static void addon_panel_types_collect(const bContext *C,
            * editor's #SpaceType.context callback provides (context.material,
            * context.light, ...), and raises rather than failing quietly when they are
            * absent - it was not written expecting to run elsewhere. Since the whole area
-           * borrows from a single editor (#SpaceAddon::delegate_spacetype), a panel
+           * borrows from a single editor (#ScrArea::context_delegate_spacetype), a panel
            * written for any other editor would be polled against the wrong space data.
            *
            * That is not hypothetical: ucupaint registers for both the Node Editor and
@@ -473,7 +471,8 @@ static uint64_t addon_screen_signature_get(const bScreen *screen)
 
 static void addon_main_region_layout(const bContext *C, ARegion *region)
 {
-  SpaceAddon *saddon = CTX_wm_space_addon(C);
+  ScrArea *area_orig = CTX_wm_area(C);
+  SpaceAddon *saddon = static_cast<SpaceAddon *>(area_orig->spacedata.first);
 
   /* Rebuild when the add-on changed, when panel types were registered or removed (an
    * add-on being enabled, disabled or reloaded), or when the set of open editor types
@@ -491,12 +490,15 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
       addon_poll_failed_get().clear();
     }
 
-    /* Resolved first: collection keeps only the panels this delegate can satisfy. */
-    saddon->delegate_spacetype = addon_delegate_spacetype_find(C, saddon->addon_id);
+    /* Resolved first: collection keeps only the panels this delegate can satisfy.
+     * Recorded on the area itself - a generic per-area override, see
+     * #ScrArea::context_delegate_spacetype - rather than on this space, so that
+     * #blenkernel's context resolution needs no knowledge of this editor. */
+    area_orig->context_delegate_spacetype = addon_delegate_spacetype_find(C, saddon->addon_id);
 
     addon_panel_types_collect(C,
                               saddon->addon_id,
-                              saddon->delegate_spacetype,
+                              area_orig->context_delegate_spacetype,
                               &saddon->runtime->paneltypes,
                               &region->panels);
     STRNCPY(saddon->runtime->cached_addon_id, saddon->addon_id);
@@ -512,16 +514,17 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
   /* Borrow context from a real editor of the delegated type, so that panels polling on
    * the editor type or reading space data still draw. Restored below.
    *
-   * The type itself is recorded on the space (above), so that context lookups made
+   * The type itself is recorded on the area (above), so that context lookups made
    * outside this layout pass - menus opened from a panel, operator polls when a button
    * is pressed - resolve the same way. Without that, a panel would draw but its buttons
    * would silently do nothing. */
   bContext *C_mutable = const_cast<bContext *>(C);
-  ScrArea *area_orig = CTX_wm_area(C);
   ARegion *region_orig = CTX_wm_region(C);
   bScreen *screen = CTX_wm_screen(C);
-  ScrArea *area_delegate = (screen != nullptr && saddon->delegate_spacetype != SPACE_EMPTY) ?
-                               BKE_screen_find_big_area(screen, saddon->delegate_spacetype, 0) :
+  ScrArea *area_delegate = (screen != nullptr &&
+                            area_orig->context_delegate_spacetype != SPACE_EMPTY) ?
+                               BKE_screen_find_big_area(
+                                   screen, area_orig->context_delegate_spacetype, 0) :
                                nullptr;
 
   if (area_delegate != nullptr) {

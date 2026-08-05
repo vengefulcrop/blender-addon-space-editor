@@ -959,24 +959,20 @@ ScrArea *CTX_wm_area(const bContext *C)
 /**
  * The area that space lookups should resolve against.
  *
- * This is the current area, except for the Add-on editor (#SPACE_ADDON), which hosts
- * panels written for a different editor. Those panels read the space data of the editor
- * they were written for, both while drawing and later, when a menu is opened from a
- * panel or an operator's poll runs on a button press. Resolving to an open editor of the
- * borrowed type keeps all of those consistent.
+ * This is the current area, unless it declares a #ScrArea::context_delegate_spacetype:
+ * a generic per-area override, set by whichever editor needs it, that redirects context
+ * resolution to an open area of that type elsewhere in the screen. Nothing here is
+ * specific to any one editor - this function has no knowledge of which space type, if
+ * any, uses the mechanism.
  *
- * Returns the area itself when there is nothing to delegate to, so hosted panels that
- * require an editor which is not open simply poll false, as they would anyway.
+ * Returns the area itself when there is nothing to delegate to (including when the
+ * declared type is not open anywhere), so context lookups fail the same way they would
+ * for any other area with nothing to resolve.
  */
 static ScrArea *ctx_wm_area_effective(const bContext *C)
 {
   ScrArea *area = CTX_wm_area(C);
-  if (area == nullptr || area->spacetype != SPACE_ADDON) {
-    return area;
-  }
-
-  const SpaceAddon *saddon = static_cast<const SpaceAddon *>(area->spacedata.first);
-  if (saddon == nullptr || saddon->delegate_spacetype == SPACE_EMPTY) {
+  if (area == nullptr || area->context_delegate_spacetype == SPACE_EMPTY) {
     return area;
   }
 
@@ -987,7 +983,7 @@ static ScrArea *ctx_wm_area_effective(const bContext *C)
 
   /* Resolved by type rather than by a stored pointer, so closing the borrowed editor
    * cannot leave a dangling reference. */
-  ScrArea *area_delegate = BKE_screen_find_big_area(screen, saddon->delegate_spacetype, 0);
+  ScrArea *area_delegate = BKE_screen_find_big_area(screen, area->context_delegate_spacetype, 0);
   return area_delegate ? area_delegate : area;
 }
 

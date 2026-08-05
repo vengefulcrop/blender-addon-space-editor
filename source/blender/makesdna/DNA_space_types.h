@@ -1362,15 +1362,11 @@ struct SpaceAddon {
   char addon_id[128] = {};
 
   /**
-   * Editor type this area borrows context from, or #SPACE_EMPTY for none.
-   *
-   * Hosted panels are written for a particular editor and read its `space_data`, so
-   * context lookups made while this area is current resolve against an open editor of
-   * this type instead (see #CTX_wm_space_data). The type is stored rather than a pointer
-   * to the area, so that closing the borrowed editor cannot leave a dangling reference.
+   * The delegated editor type lives on #ScrArea::context_delegate_spacetype instead of
+   * here - it is a generic per-area capability, not something specific to this space
+   * type, even though this editor is presently the only thing that sets it.
    */
-  short delegate_spacetype = 0;
-  char _pad1[6] = {};
+  char _pad1[8] = {};
 
   /** Keep last. */
   SpaceAddon_Runtime *runtime = nullptr;
