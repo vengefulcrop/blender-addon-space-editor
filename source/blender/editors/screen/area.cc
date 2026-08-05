@@ -2877,6 +2877,15 @@ void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_regi
     area->spacetype = type;
     area->type = st;
 
+    /* Whatever occupies this area next did not ask to have its context resolution
+     * redirected elsewhere - only the previous editor could have set this (see
+     * #ScrArea::context_delegate_spacetype). Stale, it would silently point context
+     * lookups for the *new* space at an unrelated area of the old delegate type,
+     * while #CTX_wm_region still correctly returns this area's own region - exactly
+     * the kind of mismatched space/region pairing that crashes code assuming they
+     * always belong together. */
+    area->context_delegate_spacetype = SPACE_EMPTY;
+
     /* If st->create may be called, don't use context until then. The
      * area->type->context() callback has changed but data may be invalid
      * (e.g. with properties editor) until space-data is properly created */
