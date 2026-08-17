@@ -39,6 +39,8 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
+#include "WM_api.hh"
+
 #include "BLO_read_write.hh"
 
 #ifdef WITH_PYTHON
@@ -799,10 +801,26 @@ static void addon_space_subtype_set(ScrArea *area, int value)
   }
 }
 
-static void addon_space_subtype_item_extend(bContext * /*C*/,
+static void addon_space_subtype_item_extend(bContext *C,
                                             EnumPropertyItem **item,
                                             int *totitem)
 {
+  /* Delegation only ever searches the current window's own screen
+   * (addon_delegate_spacetype_find(), via BKE_screen_find_big_area()) - a Node Editor
+   * open in the main window is invisible to an Add-on Editor area in a second window.
+   * Rather than let a user create one there and hit that silently, the whole "Add-ons"
+   * section is left out of the menu for any window that is not the main/top-level one -
+   * the same window WM_window_is_main_top_level() already distinguishes for global-area
+   * purposes (top-bar/status-bar). This hides the option outright rather than greying it
+   * out: the shared area-type dropdown draws every editor's entries through one generic
+   * EnumPropertyItem-based menu with no per-item disabled state, and this editor already
+   * hides curated entries that would be a dead end right now (disabled add-ons) rather
+   * than showing them disabled - this is the same call for the same reason. */
+  const wmWindow *win = CTX_wm_window(C);
+  if (win != nullptr && !WM_window_is_main_top_level(win)) {
+    return;
+  }
+
   const EnumPropertyItem heading = RNA_ENUM_ITEM_HEADING(N_("Add-ons"), nullptr);
   RNA_enum_item_add(item, totitem, &heading);
 
