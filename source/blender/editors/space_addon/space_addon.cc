@@ -548,11 +548,27 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
    * The type itself is recorded on the area (above), so that context lookups made
    * outside this layout pass - menus opened from a panel, operator polls when a button
    * is pressed - resolve the same way. Without that, a panel would draw but its buttons
-   * would silently do nothing. */
+   * would silently do nothing.
+   *
+   * Never done when the only thing about to be laid out is this editor's own
+   * #ADDON_PT_empty_state fallback (#addon_panel_types_collect injects it precisely when
+   * there are no real, foreign panels to show). That panel is this editor's own chrome,
+   * not re-hosted add-on content - it needs the real #SpaceAddon on \a area_orig, via
+   * `context.area` in its Python `draw()`, and swapping #CTX_wm_area out from under it
+   * handed it a real #SpaceNodeEditor/#SpaceView3D instead, raising on
+   * `space.addon_id` (that attribute only exists on #SpaceAddon). The delegate can be
+   * resolved to a real, open editor even when nothing in it currently qualifies for
+   * this add-on, so this is not just "area_delegate happens to be null" - it needs an
+   * explicit check of what actually ended up in the collected list. */
+  const bool only_fallback_panel = saddon->runtime->paneltypes.is_single() &&
+                                   STREQ(static_cast<PanelType *>(saddon->runtime->paneltypes.first)
+                                             ->idname,
+                                         "ADDON_PT_empty_state");
+
   bContext *C_mutable = const_cast<bContext *>(C);
   ARegion *region_orig = CTX_wm_region(C);
   bScreen *screen = CTX_wm_screen(C);
-  ScrArea *area_delegate = (screen != nullptr &&
+  ScrArea *area_delegate = (screen != nullptr && !only_fallback_panel &&
                             area_orig->context_delegate_spacetype != SPACE_EMPTY) ?
                                BKE_screen_find_big_area(
                                    screen, area_orig->context_delegate_spacetype, 0) :
