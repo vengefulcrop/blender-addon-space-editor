@@ -10,16 +10,20 @@ from bpy.props import EnumProperty, IntProperty, StringProperty
 
 
 def _addon_display_name(context, addon_id):
-    """Curated display name for addon_id, falling back to the raw id.
+    """Display name for addon_id: the curated name if it has one, else its bl_info name.
 
-    The fallback matters for an area hosting an add-on that was never added through
-    the picker (e.g. addon_id set directly via Python), which has no curated
-    bAddonEditor entry to read a name from.
+    Never falls back to addon_id while anything better can be resolved. For an
+    extension that id is the full bl_ext.<repository>.<addon> import path rather than
+    a name, so showing it directly is always a regression - which is exactly what
+    happened once the sidebar tree made it possible to host an add-on that was never
+    added through the picker, and so has no curated bAddonEditor entry to read from.
     """
     for entry in context.preferences.addon_editors:
         if entry.module == addon_id:
-            return entry.name or addon_id
-    return addon_id
+            if entry.name:
+                return entry.name
+            break
+    return _addon_label(addon_id)
 
 
 def _registered_panel_classes():

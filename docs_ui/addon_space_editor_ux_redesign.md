@@ -161,9 +161,25 @@ simply is not there":
    wrong and reverted: that hook only sees `SpaceLink::regionbase`, which is empty for
    the *active* space (its regions live in `ScrArea::regionbase`).
 
+**Added 2026-08-19, after first launch:**
+- `set_default_rows(8)` on the tree. Not cosmetic - it is the only public way to give the
+  view a custom height, and *everything* the scrollable-list treatment consists of is
+  gated on that (`tree_view.cc`, `if (tree_view.custom_height_)`): the scroll bar, the
+  drag-to-resize grip, the search field, and the alphabetical sort toggle. Without it the
+  tree drew every row of every installed add-on at full length with no way to filter. This
+  answered three separate objections to `AbstractTreeView` at once - unbounded height, no
+  search, no sorting - none of which needed building.
+- Real add-on names in the tree via `BPY_addon_module_info_get()`, plus the bundled-add-on
+  filter the picker applies and the tree previously ignored.
+- Two upstream search-behaviour bugs fixed in shared tree-view code (see the separate
+  commit): clearing a search now restores the collapse state it found, and a match on a
+  parent row now reveals that row's children instead of appearing to empty it.
+- Panel context delegation narrowed to the panel callbacks themselves, fixing hosted
+  panels not reflowing when one is resized (plan doc, 2026-08-19).
+
 **Not built yet** - the "must still be worked on" list:
-- Search/filter in either panel (planned `UIList` `filter_items()` for Bookmarks; the
-  tree has no filter box wired up either).
+- Search/filter in the *Bookmarks* panel (planned `UIList` `filter_items()`). The Addons
+  tree has search now, via `set_default_rows()` above.
 - Bookmarks is drawn as a plain operator list, not the searchable `UIList` §2 called for.
 - Tree rows have no pin/bookmark affordance - bookmarking is only possible from the
   Bookmarks panel header, for whatever the area currently hosts.

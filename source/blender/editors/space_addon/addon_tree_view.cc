@@ -177,6 +177,15 @@ static void addon_panel_tree_draw(const bContext *C, Panel *panel)
 
   ui::AbstractTreeView *tree_view = ui::block_add_view(
       *block, "addon panel tree view", std::make_unique<AddonTreeView>());
+
+  /* Not cosmetic: this is what gives the view a bounded height at all. Everything the
+   * scrollable/searchable list treatment consists of - the scroll bar, the drag-to-resize
+   * grip, the search field, and the alphabetical sort toggle - is drawn only when the view
+   * has a custom height, and this is the only public way to establish one (see
+   * `tree_view.cc`, `if (tree_view.custom_height_)`). Without it the tree draws every row
+   * of every installed add-on at full length, with no way to filter it. */
+  tree_view->set_default_rows(8);
+
   ui::TreeViewBuilder::build_tree_view(*C, *tree_view, layout);
 }
 

@@ -1285,6 +1285,66 @@ tracked as `punch_list.md` item 13.
 
 ---
 
+### Context delegation narrowed to the panel callbacks themselves (2026-08-19)
+
+Until now `addon_main_region_layout` swapped `CTX_wm_area`/`CTX_wm_region` to the delegate
+around the *entire* `ED_region_panels_layout_ex` call. That was always too coarse, and it
+produced a steady trickle of bugs that all looked unrelated until traced:
+
+- **The empty-state crash** (2026-08-17, above) - our own fallback panel read
+  `context.area` and got a `SpaceNodeEditor`. Patched at the time with an
+  `only_fallback_panel` check.
+- **Panels not making way when one is resized** (reported 2026-08-18). Dragging a hosted
+  panel's internal resize grip changed its height, but the panels below did not move until
+  something else forced a rebuild. Root cause: a size change sets `PANEL_ANIM_ALIGN`
+  (`interface_panel.cc`), `panels_need_realign()` then returns that panel, and
+  `panels_end()` calls `panel_activate_state()` - which read the region from *context*,
+  i.e. the borrowed one. The re-align animation and its redraw were started on the
+  delegate's region. Collapse/re-open worked because that is a click, handled outside the
+  layout pass with the real region in context.
+
+**Why the obvious fixes were dead ends**, both investigated before settling:
+
+1. *Make `panel_activate_state()` take the region explicitly.* Implemented, and it is a
+   defensible change on its own - but insufficient. `panel_handle_data_ensure()` registers
+   the animation handler through `WM_event_add_ui_handler()`, which snapshots
+   `CTX_wm_area`/`CTX_wm_region` into the handler (`wm_event_system.cc:5205-5208`) and
+   `wm_handler_ui_call()` restores that snapshot when the timer fires. So the handler stayed
+   bound to the borrowed region regardless. Correcting that from `interface_panel.cc` needs
+   `wmEventHandler_UI`'s definition, which lives in the private `wm_event_system.hh`.
+   Reverted.
+2. *Wrap the callbacks on this editor's own `PanelType` copies.* Cannot reach sub-panels.
+   The copies are shallow (`MEM_dupalloc`), so `pt_copy->children` is the registered type's
+   own children list, and `ed_panel_draw()` recurses into those registered child types
+   directly (`area.cc:3272-3286`). Wrapping them would modify types shared with the editor
+   the panels came from.
+
+**What was built instead**: `ED_region_panels_layout_ex()` takes an optional
+`PanelDrawContextOverride` (`ED_screen.hh`) - an area and/or region applied *only* around
+each panel's `poll`, `draw`, `draw_header` and `draw_header_preset`, via a scoped RAII
+applier that restores what it saw (re-entrant, since a sub-panel's callback nests inside its
+parent's). It is threaded through `ed_panel_draw`'s child recursion, so sub-panels are
+covered by construction, and through `panel_add_check` so top-level polls get it too. The
+parameter defaults to null, so the five other editors calling this function are untouched.
+
+Everything the layout pass does *besides* running panel callbacks - panel alignment, region
+size updates, search-filter lookup, and handler registration - now runs with the region it
+was actually called for. That is what fixes the reflow bug, and it retires the whole class:
+these were all one defect wearing different hats.
+
+**Removed as a result**: the `only_fallback_panel` special case. Our `ADDON_PT_empty_state`
+reads `context.area` expecting the real `SpaceAddon`, and nothing replaces it any more
+except while a borrowing panel's own callback runs - so the crash it guarded against is now
+structurally impossible rather than defended against.
+
+**Explicitly not fixed by this**: modal operators (§4a, "The limitation is narrower than
+'modal operators break'"). Those fail at *button-invoke* time, which never had the swap -
+`WM_event_add_modal_handler` snapshots this area and region, and Transform then finds no
+`RegionView3D` on our region. That still needs button-level interception (`punch_list.md`
+item 8). The two are orthogonal.
+
+---
+
 ## 6. Design questions answered along the way
 
 **Does an add-on panel need a corresponding editor open at all?** Often not. Only
