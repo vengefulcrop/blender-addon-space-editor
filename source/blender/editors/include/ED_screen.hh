@@ -114,16 +114,38 @@ void ED_region_panels_ex(const bContext *C,
                          const char *contexts[]);
 void ED_region_panels(const bContext *C, ARegion *region);
 /**
+ * Context to run panel callbacks under, for a region laying out panel types belonging to a
+ * different editor than the one the region is in.
+ *
+ * Such a panel resolves `space_data` and `region_data` from the context's area and region, so
+ * it has to run under the editor it was written for or it reads the wrong space entirely. The
+ * override is applied around each panel's `poll`, `draw` and header callbacks only, and never
+ * around the layout's own work: region bookkeeping, panel alignment and the registration of
+ * handlers must all target the region actually holding the panels, which is the region passed
+ * to #ED_region_panels_layout_ex, not the borrowed one.
+ *
+ * Members left null are not overridden. Note that setting an area clears the context's region
+ * (#CTX_wm_area_set), so an override that sets only the area leaves no region set.
+ */
+struct PanelDrawContextOverride {
+  ScrArea *area = nullptr;
+  ARegion *region = nullptr;
+};
+
+/**
  * \param contexts: A NULL terminated array of context strings to match against.
  * Matching against any of these strings will draw the panel.
  * Can be NULL to skip context checks.
+ * \param ctx_override: Optional context for the panel callbacks, see
+ * #PanelDrawContextOverride. Null for the normal case, where the panels belong to this region.
  */
 void ED_region_panels_layout_ex(const bContext *C,
                                 ARegion *region,
                                 ListBaseT<PanelType> *paneltypes,
                                 wm::OpCallContext op_context,
                                 const char *contexts[],
-                                const char *category_override);
+                                const char *category_override,
+                                const PanelDrawContextOverride *ctx_override = nullptr);
 /**
  * Build the same panel list as #ED_region_panels_layout_ex and checks whether any
  * of the panels contain a search result based on the area / region's search filter.

@@ -3118,6 +3118,53 @@ BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
  * associated with the panel. Used when the panel is an instanced panel so a unique identifier is
  * needed to find the correct old \a ui::Block, and nullptr otherwise.
  */
+/**
+ * Applies a #PanelDrawContextOverride for as long as it is in scope, restoring whatever was
+ * there before. Scoped tightly around individual panel callbacks rather than held across a
+ * whole layout pass: everything else the layout does needs the region it was called for.
+ *
+ * Re-entrant - a sub-panel's callback nests inside its parent's - because it restores what it
+ * saw rather than assuming an un-overridden starting point.
+ */
+class ScopedPanelDrawContext {
+  bContext *C_ = nullptr;
+  ScrArea *area_prev_ = nullptr;
+  ARegion *region_prev_ = nullptr;
+
+ public:
+  ScopedPanelDrawContext(const bContext *C, const PanelDrawContextOverride *ctx_override)
+  {
+    if (ctx_override == nullptr ||
+        (ctx_override->area == nullptr && ctx_override->region == nullptr))
+    {
+      return;
+    }
+    C_ = const_cast<bContext *>(C);
+    area_prev_ = CTX_wm_area(C_);
+    region_prev_ = CTX_wm_region(C_);
+
+    /* Area first: setting it clears the region. */
+    if (ctx_override->area != nullptr) {
+      CTX_wm_area_set(C_, ctx_override->area);
+    }
+    if (ctx_override->region != nullptr) {
+      CTX_wm_region_set(C_, ctx_override->region);
+    }
+  }
+
+  ~ScopedPanelDrawContext()
+  {
+    if (C_ == nullptr) {
+      return;
+    }
+    CTX_wm_area_set(C_, area_prev_);
+    CTX_wm_region_set(C_, region_prev_);
+  }
+
+  ScopedPanelDrawContext(const ScopedPanelDrawContext &) = delete;
+  ScopedPanelDrawContext &operator=(const ScopedPanelDrawContext &) = delete;
+};
+
 static void ed_panel_draw(const bContext *C,
                           ARegion *region,
                           ListBaseT<Panel> *lb,
@@ -3127,7 +3174,8 @@ static void ed_panel_draw(const bContext *C,
                           int em,
                           char *unique_panel_str,
                           const char *search_filter,
-                          wm::OpCallContext op_context)
+                          wm::OpCallContext op_context,
+                          const PanelDrawContextOverride *ctx_override)
 {
   const uiStyle *style = ui::style_get_dpi();
 
@@ -3168,7 +3216,10 @@ static void ed_panel_draw(const bContext *C,
 
     panel->layout->operator_context_set(op_context);
 
-    pt->draw_header_preset(C, panel);
+    {
+      ScopedPanelDrawContext ctx_scope(C, ctx_override);
+      pt->draw_header_preset(C, panel);
+    }
 
     block_apply_search_filter(block, search_filter);
     co = ui::block_layout_resolve(block);
@@ -3208,7 +3259,10 @@ static void ed_panel_draw(const bContext *C,
 
     panel->layout->operator_context_set(op_context);
 
-    pt->draw_header(C, panel);
+    {
+      ScopedPanelDrawContext ctx_scope(C, ctx_override);
+      pt->draw_header(C, panel);
+    }
 
     block_apply_search_filter(block, search_filter);
     co = ui::block_layout_resolve(block);
@@ -3247,7 +3301,10 @@ static void ed_panel_draw(const bContext *C,
 
     panel->layout->operator_context_set(op_context);
 
-    pt->draw(C, panel);
+    {
+      ScopedPanelDrawContext ctx_scope(C, ctx_override);
+      pt->draw(C, panel);
+    }
 
     const bool ends_with_layout_panel_header = uiLayoutEndsWithPanelHeader(*panel->layout);
 
@@ -3273,7 +3330,13 @@ static void ed_panel_draw(const bContext *C,
       PanelType *child_pt = static_cast<PanelType *>(link.data);
       Panel *child_panel = ui::panel_find_by_type(&panel->children, child_pt);
 
-      if (child_pt->draw && (!child_pt->poll || child_pt->poll(C, child_pt))) {
+      bool child_poll = child_pt->draw != nullptr;
+      if (child_poll && child_pt->poll) {
+        ScopedPanelDrawContext ctx_scope(C, ctx_override);
+        child_poll = child_pt->poll(C, child_pt);
+      }
+
+      if (child_poll) {
         ed_panel_draw(C,
                       region,
                       &panel->children,
@@ -3283,7 +3346,8 @@ static void ed_panel_draw(const bContext *C,
                       em,
                       unique_panel_str,
                       search_filter,
-                      op_context);
+                      op_context,
+                      ctx_override);
       }
     }
   }
@@ -3298,7 +3362,8 @@ static bool panel_add_check(const bContext *C,
                             const WorkSpace *workspace,
                             const char *contexts[],
                             const char *category_override,
-                            PanelType *panel_type)
+                            PanelType *panel_type,
+                            const PanelDrawContextOverride *ctx_override)
 {
   /* Only add top level panels. */
   if (panel_type->parent) {
@@ -3326,8 +3391,11 @@ static bool panel_add_check(const bContext *C,
   }
 
   if (panel_type->draw) [[likely]] {
-    if (panel_type->poll && !panel_type->poll(C, panel_type)) {
-      return false;
+    if (panel_type->poll) {
+      ScopedPanelDrawContext ctx_scope(C, ctx_override);
+      if (!panel_type->poll(C, panel_type)) {
+        return false;
+      }
     }
   }
 
@@ -3373,13 +3441,14 @@ void ED_region_panels_layout_ex(const bContext *C,
                                 ListBaseT<PanelType> *paneltypes,
                                 wm::OpCallContext op_context,
                                 const char *contexts[],
-                                const char *category_override)
+                                const char *category_override,
+                                const PanelDrawContextOverride *ctx_override)
 {
   /* collect panels to draw */
   WorkSpace *workspace = CTX_wm_workspace(C);
   LinkNode *panel_types_stack = nullptr;
   for (PanelType &pt : paneltypes->items_reversed()) {
-    if (panel_add_check(C, workspace, contexts, category_override, &pt)) {
+    if (panel_add_check(C, workspace, contexts, category_override, &pt, ctx_override)) {
       BLI_linklist_prepend_alloca(&panel_types_stack, &pt);
     }
   }
@@ -3460,8 +3529,17 @@ void ED_region_panels_layout_ex(const bContext *C,
       update_tot_size = false;
     }
 
-    ed_panel_draw(
-        C, region, &region->panels, pt, panel, width, em, nullptr, search_filter, op_context);
+    ed_panel_draw(C,
+                  region,
+                  &region->panels,
+                  pt,
+                  panel,
+                  width,
+                  em,
+                  nullptr,
+                  search_filter,
+                  op_context,
+                  ctx_override);
   }
 
   /* Draw "poly-instantiated" panels that don't have a 1 to 1 correspondence with their types. */
@@ -3476,7 +3554,7 @@ void ED_region_panels_layout_ex(const bContext *C,
       if (use_categories && panel.type->category[0] && !STREQ(category, panel.type->category)) {
         continue;
       }
-      if (!panel_add_check(C, workspace, contexts, category_override, panel.type)) {
+      if (!panel_add_check(C, workspace, contexts, category_override, panel.type, ctx_override)) {
         continue;
       }
 
@@ -3500,7 +3578,8 @@ void ED_region_panels_layout_ex(const bContext *C,
                     em,
                     unique_panel_str,
                     search_filter,
-                    op_context);
+                    op_context,
+                    ctx_override);
     }
   }
 
@@ -3858,7 +3937,8 @@ bool ED_region_property_search(const bContext *C,
 
   LinkNode *panel_types_stack = nullptr;
   for (PanelType &pt : paneltypes->items_reversed()) {
-    if (panel_add_check(C, workspace, contexts, category_override, &pt)) {
+    /* Property search runs for the region's own panels, so there is nothing to borrow. */
+    if (panel_add_check(C, workspace, contexts, category_override, &pt, nullptr)) {
       BLI_linklist_prepend_alloca(&panel_types_stack, &pt);
     }
   }
