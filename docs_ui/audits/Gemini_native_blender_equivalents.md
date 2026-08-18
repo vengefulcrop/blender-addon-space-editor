@@ -2,9 +2,12 @@
 
 **Branch / Context:** `pyareas/addon-space-editor` vs `main` (`027ef661892c1234de0eb8d44bf5bb189eb39d81`)  
 **Prefix:** `Gemini_`  
-**Reference Document:** `docs_ui/Gemini_verified_native_apis.md` — note: this file does not exist in the
-repository at the time of this correction pass; the link is dead. Do not treat its
-existence as itself a form of verification.
+**Reference Document:** [`Gemini_verified_native_apis.md`](Gemini_verified_native_apis.md) —
+note: this file did not exist at the time of the original correction pass below (the link
+was dead then); it has since appeared and now sits alongside this file. Its citations were
+not re-verified as part of that original pass — treat its own claims with the same
+skepticism applied everywhere else in this document, not as pre-validated because a file
+now exists at that name.
 
 ---
 

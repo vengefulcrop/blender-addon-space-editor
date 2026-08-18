@@ -1,7 +1,7 @@
 # Add-on Space Editor — Punch List
 
-Consolidated from `audit_reconciliation_summary.md`, `audit_pruning_candidates.md`,
-`audit_native_equivalents.md`, and this session's design discussions. Status as of
+Consolidated from `audits/audit_reconciliation_summary.md`, `audits/audit_pruning_candidates.md`,
+`audits/audit_native_equivalents.md`, and this session's design discussions. Status as of
 2026-08-18.
 
 ---
@@ -129,10 +129,37 @@ All verified real via direct source inspection (not just asserted by an audit).
     fragility — already caused one shipped bug (the `-1`/`0x7FFF` sentinel-collision
     issue). Worth hardening (named constant, more validation) independent of whether
     the larger "separate header button" UX rework ever happens.
+11. **Hosting-detection API for add-on authors** (2026-08-18, not built). Give hosted
+    add-ons an official way to know they're running inside this editor, so cooperative
+    authors can defensively guard the region/view-space-dependent code that breaks
+    under delegation (the Transform-vs-DreamUV distinction from item 8/9) themselves,
+    rather than every hosted add-on needing us to catch it after the fact.
+
+    **`context.area.type` is not a valid signal and must not be exposed that way** -
+    during a panel's own `poll()`/`draw()`, `CTX_wm_area(C)` has already been swapped to
+    the delegate (`addon_main_region_layout`'s `CTX_wm_area_set`, bracketing exactly the
+    `ED_region_panels_layout_ex` call where panel code runs), so it deliberately reads as
+    the *native* editor type, not `'ADDON'`. That's the whole point of the swap - a naive
+    `context.area.type == 'ADDON'` check would silently get the opposite of the right
+    answer at exactly the moment it matters.
+
+    **Recommended shape**: a small, self-contained, runtime-only WM-level flag (not
+    persisted DNA), set/cleared symmetrically around the same `ED_region_panels_layout_ex`
+    call already being bracketed for the area/region swap - mirrors an existing pattern,
+    touches no shared code. Considered and rejected: exposing it via the generic
+    screen-layer context (`screen_context.cc`, alongside `scene`/`object`/`mode`) would be
+    the more "idiomatic" location since that layer already survives delegation untouched,
+    but doing so means teaching genuinely generic core code about `SPACE_ADDON` by name -
+    exactly the coupling the "context delegation made generic" refactor (§4a) already
+    spent real effort removing. Stay self-contained instead.
+
+    Worth exposing more than a bare boolean: also surface the resolved delegate's editor
+    type and/or the curated add-on's own display name, so authors can write real
+    messaging ("this panel works best in its native editor"), not just an on/off check.
 
 ## Open, not yet investigated
 
-11. **Global poll-failure blacklist** (`addon_poll_failed_get`, a static
+12. **Global poll-failure blacklist** (`addon_poll_failed_get`, a static
     `Set<std::string>` shared across all areas/windows, permanently blacklisting a
     panel whose `poll()` raised until panel types change). A plausible concern was
     raised (cross-window side effects, silent permanent blacklisting) but not
@@ -148,5 +175,5 @@ All verified real via direct source inspection (not just asserted by an audit).
   punch-list item.
 - Every item Gemini's two audits raised that didn't survive verification (fabricated
   APIs, or findings already deliberately considered and rejected in the code's own
-  comments) — see `audit_reconciliation_summary.md` for the full accounting. Not
+  comments) — see `audits/audit_reconciliation_summary.md` for the full accounting. Not
   repeated here.

@@ -2,7 +2,7 @@
 
 **Status**: planning complete, implementation not started
 **Base**: Blender `main` @ `027ef661` (5.3.0 alpha), cloned 2026-07-31
-**Supersedes**: [custom_python_space_types_architecture.md](custom_python_space_types_architecture.md)
+**Supersedes**: [custom_python_space_types_architecture.md](legacy/custom_python_space_types_architecture.md)
 
 ---
 
@@ -908,7 +908,7 @@ neither changed the feature's behaviour, only where the same logic lives.
 
 **Context delegation.** `ctx_wm_area_effective()` in `context.cc` used to branch on
 `area->spacetype != SPACE_ADDON` before reading `SpaceAddon::delegate_spacetype` - the
-concrete form of the coupling `code_review.md` §3 flagged as the branch most likely to
+concrete form of the coupling `legacy/code_review.md` §3 flagged as the branch most likely to
 draw upstream pushback. The field moved to a new, generic `ScrArea::context_delegate_spacetype`
 (replacing 2 bytes of existing padding - no struct size change), and the function now
 reads it directly with no spacetype check at all. `blenkernel` no longer mentions
@@ -938,7 +938,7 @@ zero new compiler errors or warnings; behavior was not re-tested interactively s
 neither change alters *when* or *how* delegation resolves, only *where* the same data is
 stored and *when* the same function is called - the load-bearing logic (resolution order,
 fallback, the three call sites in `space_addon.cc`) is byte-for-byte what it was before
-either refactor. See `code_review.md` §3/§9 for the corresponding update to the
+either refactor. See `legacy/code_review.md` §3/§9 for the corresponding update to the
 architectural note this closes out.
 
 ### Delegate icon in the header, and icons on the supported-editors list (2026-08-05)
