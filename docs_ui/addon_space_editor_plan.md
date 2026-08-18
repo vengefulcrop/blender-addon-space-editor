@@ -1226,6 +1226,65 @@ are all counted, not a quick add.
 
 ---
 
+### `context.space_data` always resolves through the delegate — correction, not fork-specific to panel draw (2026-08-18)
+
+Initially assumed header draw was exempt from context delegation, since
+`addon_header_region_draw()` (`space_addon.cc:646`) calls `ED_region_header(C, region)`
+directly, with no surrounding `CTX_wm_area_set`/`CTX_wm_region_set` swap the way
+`addon_main_region_layout` brackets panel draw. That assumption was wrong, caught by
+re-reading `context.cc` directly rather than trusting the earlier inference.
+
+**Why it's wrong.** `CTX_wm_space_data()` (`context.cc:990`) - like all 18 typed space
+accessors - routes through `ctx_wm_area_effective()` unconditionally, for *every*
+caller, everywhere, not only inside the panel-draw window that
+`addon_main_region_layout` explicitly swaps. So `context.space_data` resolves to the
+delegate's space whenever one is active, regardless of which region is currently
+drawing - header, panel, or anything else. `ADDON_HT_header.draw()` already gets this
+right (`space_addon.py:199`, `space = context.area.spaces.active`, with a comment
+explaining why `context.space_data` would be wrong there) - but the reasoning wasn't
+previously written down as a general rule.
+
+**The rule**: any code that needs `SpaceAddon`'s own state (`addon_id`,
+`preferred_delegate_spacetype`) - our own code or a hosted add-on's - must read it via
+`context.area.spaces.active`, never `context.space_data`, full stop, regardless of
+which region/callback it runs in. Recorded here so this doesn't have to be
+independently rediscovered by whoever writes the header-hosting recipe below.
+
+### Add-ons can already host custom header entries today - a stock mechanism, not a gap (2026-08-18)
+
+Raised as a question: can an add-on declare its own header buttons for this editor,
+conditioned on which of its own panel sets is currently showing (e.g. one set of
+buttons when its `VIEW_3D` panels are the active delegate, a different set for its
+`NODE_EDITOR` panels)? Traced through rather than assumed, and the answer is yes,
+already, with nothing to build on our side:
+
+- `ADDON_HT_header` (`space_addon.py:187`) is an ordinary `bpy.types.Header` with
+  `bl_space_type = 'ADDON'` - the exact same registration shape every built-in editor
+  header uses. Blender's stock extension mechanism therefore already applies
+  unmodified: `bpy.types.ADDON_HT_header.append(my_draw_func)` works today, and the
+  callback only ever fires while hosted in this editor - registering against
+  `'ADDON'` at all *is* the hosting-detection signal here, no flag needed (contrast
+  with panel code, where `context.area.type` deliberately reads as the *native* type
+  under delegation - see item 11/`context_delegate_spacetype` discussion in
+  `punch_list.md` - so panels need a different, not-yet-built signal).
+- To further gate on *which* of the add-on's own panel sets is showing (relevant once
+  an add-on declares panels for more than one space type - the ucupaint mixed-editor
+  case), the draw func needs two properties together:
+  `context.area.spaces.active.addon_id` (identity: is it my add-on at all) and
+  `context.area.context_delegate_spacetype` (which of the supported space types is
+  actually resolved as the delegate right now). `addon_id` alone can't disambiguate
+  the multi-type case. `context_delegate_spacetype` is real, registered RNA
+  (`rna_screen.cc:530`) - previously flagged as dead/unread by our own scripts
+  (`punch_list.md` item 3), now revised: it should be read from both sides, not
+  removed.
+
+No code change needed for the capability itself; the actionable follow-up is writing
+this up as an actual recipe for add-on authors (a short doc or a comment block near
+`ADDON_HT_header`), since none of it is discoverable without reading engine source -
+tracked as `punch_list.md` item 13.
+
+---
+
 ## 6. Design questions answered along the way
 
 **Does an add-on panel need a corresponding editor open at all?** Often not. Only

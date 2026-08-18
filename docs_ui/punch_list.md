@@ -19,9 +19,26 @@ All verified real via direct source inspection (not just asserted by an audit).
 2. **`"ADDON_PT_empty_state"` hardcoded independently** in two C++ locations
    (`space_addon.cc:178`, `:568`) plus implicitly via Python's `bl_idname`. Share a
    named constant (`addon_intern.hh`) so a rename can't silently desync the two sides.
-3. **Dead `Area.context_delegate_spacetype` RNA property** — added so Python UI could
-   show which real editor an area borrows context from; never actually read anywhere
-   in `scripts/`. Remove, or wire up if still wanted.
+3. **`Area.context_delegate_spacetype` RNA property should be wired up, not removed**
+   (revised 2026-08-18 — previously listed as dead/remove-candidate; that call reverses
+   here). It's real, registered RNA (`rna_screen.cc:530`), currently unread anywhere in
+   `scripts/`, but two live uses have since surfaced:
+   - `ADDON_HT_header`'s `_addon_has_open_delegate()` (`space_addon.py:104-118`)
+     re-derives "is a delegate available" by manually scanning `context.screen.areas`
+     for a matching `area.type` — duplicating a search the C side has already done via
+     `BKE_screen_find_big_area` inside `ctx_wm_area_effective()` and cached on this
+     exact property. `context_delegate_spacetype != 'EMPTY'` is the simpler, already-
+     authoritative equivalent for "is there something to draw" and should replace the
+     rescan (not a pure equivalence in general — `_addon_has_open_delegate` asks "is
+     *any* of my supported space types open" for multi-type add-ons, while this
+     property gives the *one* resolved delegate for *this* area — but resolution can
+     only pick from what's open, so `!= 'EMPTY'` implies the rescan's answer, which is
+     all the header actually needs).
+   - Add-on authors appending custom buttons to `ADDON_HT_header` (see item 11 below)
+     need this property to tell *which* of their own declared space types is currently
+     the active delegate, when they support more than one (e.g. show a viewport-mode
+     button set vs. a node-editor button set depending on which panel set is showing).
+     `addon_id` alone doesn't disambiguate that case.
 4. **Stale doc-comment** on `BKE_paneltypes_addon_space_types_get` — still references
    the dynamic-itemf approach that was attempted and dropped (see the "itemf saga" in
    the implementation log). Fix the comment; the function itself is correct.
@@ -156,6 +173,34 @@ All verified real via direct source inspection (not just asserted by an audit).
     Worth exposing more than a bare boolean: also surface the resolved delegate's editor
     type and/or the curated add-on's own display name, so authors can write real
     messaging ("this panel works best in its native editor"), not just an on/off check.
+
+13. **Header-hosting is already possible today for add-on authors — document it, don't
+    build it** (2026-08-18). Distinct from item 11 (which is about *panel* code
+    detecting delegation): `ADDON_HT_header` (`space_addon.py:187`) is an ordinary
+    `bpy.types.Header` with `bl_space_type = 'ADDON'`, so the stock Blender extension
+    mechanism already applies unmodified — any add-on can already do
+    `bpy.types.ADDON_HT_header.append(my_draw_func)` and have it fire only while hosted
+    in this editor (registering for `'ADDON'` *is* the detection signal, no flag
+    needed). The draw func can further gate on which of its own panel sets is
+    currently showing via `context.area.spaces.active.addon_id` (identity) plus
+    `context.area.context_delegate_spacetype` (which of the add-on's supported space
+    types is the active delegate, needed once an add-on declares panels for more than
+    one — see item 3's second bullet). Nothing to build; worth writing up as an actual
+    recipe in the plan doc / a future add-on-author-facing doc, since none of this is
+    discoverable without reading our source.
+
+    **Accessor correction, important enough to flag explicitly**: `context.space_data`
+    is *not* the right accessor here, in header draw or anywhere else, including for
+    the add-on's own hosted panels. `CTX_wm_space_data()` (`context.cc:990`) routes
+    through `ctx_wm_area_effective()` unconditionally for every caller — it is not
+    specific to the panel-draw swap in `addon_main_region_layout`. So
+    `context.space_data` always resolves to the *delegate's* space when one is active,
+    never to `SpaceAddon`, regardless of which region is currently drawing. The correct
+    accessor for reading `SpaceAddon`'s own state (`addon_id`,
+    `preferred_delegate_spacetype`) is always `context.area.spaces.active` — exactly
+    what `ADDON_HT_header.draw()` itself already does (`space_addon.py:199`, with a
+    comment explaining why) — never `context.space_data`. Worth a one-line callout in
+    the plan doc so this doesn't have to be independently rediscovered later.
 
 ## Open, not yet investigated
 
