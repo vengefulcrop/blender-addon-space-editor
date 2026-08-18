@@ -1343,6 +1343,34 @@ structurally impossible rather than defended against.
 `RegionView3D` on our region. That still needs button-level interception (`punch_list.md`
 item 8). The two are orthogonal.
 
+### Hosted Properties panels follow the real editor's active tab (2026-08-19)
+
+Observed with UVmap+: its Properties panel drew empty when hosted, and filled in only once
+the *actual* Properties editor was switched to the Object Data tab. Not a bug, and worth
+recording because nothing on screen explains it.
+
+The Properties editor builds its context path from `SpaceProperties::mainb` - the active
+tab - in `buttons_context_path()` (`buttons_context.cc:839`, `switch (mainb)` at :660).
+Which members exist (`object`, `mesh`, `material`, ...) therefore depends on which tab is
+open. A panel re-hosted here borrows that whole editor, tab state included, so a panel
+needing `mesh` draws nothing while the real editor sits on Render.
+
+This is the same shape as the existing "the delegate editor has to be open at all"
+constraint, one level finer: for `SPACE_PROPERTIES` delegates it also has to be on the
+right tab. Deliberately not worked around - forcing `mainb` during layout would silently
+change what another visible editor is showing, which is a far worse surprise than a panel
+that fills in when you switch tabs.
+
+Worth surfacing in the empty-state messaging eventually ("...and the Properties editor on
+the Object Data tab"), but that needs a way to know which tab a panel wants;
+`PanelType::context` holds the tab name as a string, so it is derivable if this becomes
+worth doing.
+
+Note the same class of question is *not* an issue for the panel-collection filter: panels
+are collected regardless of tab, because `ED_region_panels_layout_ex` is called with
+`contexts = nullptr` from this editor, so `panel_add_check`'s context test is skipped.
+Only the data the panel reads is tab-dependent, not whether it is listed.
+
 ---
 
 ## 6. Design questions answered along the way

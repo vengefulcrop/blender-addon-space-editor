@@ -291,22 +291,6 @@ static void rna_Area_ui_type_update(bContext *C, PointerRNA *ptr)
 
   rna_Area_type_update(C, ptr);
 
-  /* The "Add an Add-on..." entry in the Add-on editor's sub-type list does not select an
-   * add-on itself, it opens a picker for one. #rna_Area_type_set already ran by this
-   * point and left the marker in `addon_id` (see its docstring); #C is available here
-   * to invoke the picker with, which the `set` callback does not have. */
-  if (area->spacetype == SPACE_ADDON) {
-    SpaceAddon *saddon = static_cast<SpaceAddon *>(area->spacedata.first);
-    if (saddon->addon_id[0] == SPACE_ADDON_ID_PICK_MARKER) {
-      /* Strip the marker, leaving the add-on that was hosted before the picker opened.
-       * The picker overwrites it on success; on cancel the area keeps what it had. */
-      memmove(saddon->addon_id, saddon->addon_id + 1, sizeof(saddon->addon_id) - 1);
-      saddon->addon_id[sizeof(saddon->addon_id) - 1] = '\0';
-      WM_operator_name_call(
-          C, "ADDON_OT_pick_and_host", wm::OpCallContext::InvokeDefault, nullptr, nullptr);
-    }
-  }
-
   ED_area_tag_refresh(area);
 }
 

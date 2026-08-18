@@ -321,6 +321,7 @@ class USERPREF_PT_interface_editors(InterfacePanel, CenterAlignMixIn, Panel):
         col.prop(view, "show_area_handle")
         col.prop(view, "show_number_arrows", text="Numeric Input Arrows")
         col.prop(view, "show_navigate_ui")
+        col.prop(prefs, "show_addon_editor_bundled", text="Bundled Add-ons in Add-on Editor")
 
         col = layout.column()
         col.prop(view, "border_width")
