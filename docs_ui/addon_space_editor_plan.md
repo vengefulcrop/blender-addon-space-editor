@@ -367,6 +367,111 @@ cannot both be `CTX_wm_region`. Deferred; such buttons currently misbehave (logg
 revisited, the fix is scoping the region swap to operator invocation specifically, not
 widening the existing accessor.
 
+**The limitation is narrower than "modal operators break" — it's specifically operators
+that need the region's live view/projection state, not modal operators in general
+(2026-08-18).** Checked against two real operators, one on each side.
+
+*Breaks, confirmed by reading the actual failure point.* `TRANSFORM_OT_translate` /
+`.rotate` / `.resize` (Blender's own G/R/S tool) - `convertViewVec()`
+([transform.cc:185-231](../source/blender/editors/transform/transform.cc#L185-L231)),
+for the `SPACE_VIEW3D` branch, calls
+`ED_view3d_win_to_delta(t->region, xy_delta, t->zfac, r_vec)` - this needs `t->region`'s
+actual `RegionView3D` (the real viewport's live view/projection matrices) to turn a 2D
+pixel delta into a correctly-scaled 3D-space movement: the same 10-pixel mouse move has
+to translate an object by a different real-world distance depending on zoom and camera
+distance, and that scaling factor only exists on the real region. When `t->region`/
+`t->spacetype` don't resolve to a genuine `SPACE_VIEW3D` region, execution falls to the
+`else` branch and prints exactly the logged spam named above -
+`"%s: called in an invalid context\n"`. Not an obscure case: any hosted add-on's "Move
+Selected" / nudge / duplicate-and-move button calling `transform.translate` under the
+hood hits this.
+
+*Works, confirmed by reading the add-on's actual source.* The installed DreamUV add-on's
+`view3d.dreamuv_uvscale`
+(`scripts/addons/DreamUV-master/DUV_UVScale.py`, both `invoke()` and `modal()`) never
+reads `context.region`, `context.space_data`, `context.region_data`, or calls any
+`region_2d_to_*`/`ED_view3d_win_to_*`-style conversion. It computes everything from raw
+window-space `event.mouse_x`/`event.mouse_y` deltas plus direct bmesh UV-loop edits -
+architecturally a "mouse-delta-as-a-slider" tool, the same shape as a custom
+drag-to-adjust-a-float operator. It never asks the region what its projection state is,
+so which region the click landed in is irrelevant to its correctness. Confirmed working
+when hosted, exactly because it never touches the piece this editor doesn't correctly
+delegate at invoke time.
+
+**Consequence for any future modal-operator handling (§8/9 of the punch list).** A
+detection rule based purely on `wmOperatorType::modal != nullptr` is too coarse - it
+would flag DreamUV's scale tool alongside Transform, even though only one of them
+actually breaks. The real distinguishing signal (does the operator's `invoke()`/`modal()`
+body read region/view-space state) isn't something detectable statically without reading
+the operator's own code, which is exactly the class of problem the plan's "dynamic
+context routing" discussion (§6) already named as unreliable to solve generically. This
+doesn't change the already-confirmed "block always" direction for the warning feature -
+if anything it argues for keeping detection coarse (block on `ot->modal != nullptr`) and
+accepting the false positives, rather than attempting a finer static classifier that
+can't actually be built reliably.
+
+**How a vanilla add-on already solves the same problem, and what that does and doesn't
+give us for free (2026-08-18).** The real add-on answer is `bpy.context.temp_override(
+area=..., region=...)`, wrapped by the author around one operator call - e.g. a
+Properties-panel button that nudges the 3D viewport. Traced the actual C call chain to
+confirm the scoping is sound even though the drag continues after the `with` block exits:
+`WM_operator_call_py` -> `wm_operator_call_internal`
+([wm_event_system.cc:2002](../source/blender/windowmanager/intern/wm_event_system.cc#L2002))
+invokes `ot->invoke()` and, for `RUNNING_MODAL`, registers the modal handler and returns
+immediately - it does not block for the drag. `WM_event_add_modal_handler`/
+`WM_event_add_ui_handler` capture `handler->context.area`/`region` from `CTX_wm_area(C)`/
+`CTX_wm_region(C)` at registration time, synchronously, while the override is still
+active - a one-time snapshot ("frozen screen context for modal handlers", per the WM
+source's own comment), not a live read. So a `temp_override` scoped to just the call is
+sufficient for the operator's entire lifetime, for the same reason our own layout-time
+`CTX_wm_area_set`/`CTX_wm_region_set` swap only needs to bracket one call.
+
+Two things worth separating precisely, since they answer different questions:
+
+- **The primitive itself is not Python-exclusive.** `CTX_wm_window_set`/`_screen_set`/
+  `_area_set`/`_region_set` are plain C++ functions; `temp_override()` is a Python-facing
+  convenience wrapper around them, not a capability that only exists in Python.
+  `addon_main_region_layout` already calls two of the four directly, with no Python
+  involved. A C++-native equivalent of the full four-step sequence would be a dozen
+  lines, not a new mechanism.
+- **What's actually missing is the interception point, not the primitive.** A Python
+  author using `temp_override` writes the `bpy.ops.xxx()` call themselves, so they choose
+  exactly where to wrap it. A button in a re-hosted panel is invoked by Blender's own
+  generic dispatch (`interface_handlers.cc`'s `ui_apply_but_operator` ->
+  `wm_handler_operator_call`), which has no concept of "this button lives in a re-hosted
+  foreign panel" and no existing hook to insert anything before invocation. This is the
+  same missing piece the modal-operator-warning feature (§punch list item 8) already
+  needs solved first - a post-layout walk of the region's `uiBlock`/`uiBut` lists,
+  rebinding qualifying buttons to a small wrapper. Building either the warn-and-block
+  version or an actual swap-and-fix version requires that same hook; only what the
+  wrapper *does* once installed differs.
+
+**Why this has to be solved on our side, and can't be expected of the hosted add-ons.**
+`temp_override` is an escape hatch an author reaches for deliberately, only when
+knowingly doing something unusual. The overwhelming majority of operators never need it
+not because Blender solved cross-editor invocation generally, but because of a structural
+guarantee vanilla Blender provides for free: a panel only ever draws inside the editor
+type it declared, so `context.region`/`context.space_data` are always correct by
+construction - there was never a mismatch to paper over. This editor breaks that
+guarantee systematically, for arbitrary unmodified panels whose authors never anticipated
+running anywhere but their declared editor and never had a reason to write any
+accommodation. DreamUV's scale tool works under us by accident of its own design (no
+region dependency at all), not because its author thought about being hosted elsewhere.
+If this is ever fixed, it has to happen automatically, on our side, for every qualifying
+button - effectively doing on the add-on's behalf, without its knowledge, what a
+responsible author would have manually written had they ever anticipated this. There is
+no version of "the ecosystem already solved this" to lean on; the ecosystem was never
+asked to.
+
+**One simplification this fix would have over the warning feature.** Applying the scoped
+swap unconditionally to every button in a hosted panel is harmless when unneeded (DreamUV
+would just get correctly-delegated context it never asked for) and correct when needed
+(Transform). Unlike the warning feature, this sidesteps the `ot->modal != nullptr`
+false-positive problem entirely - no classifier needed, just always wrap using the
+delegate the panel's own collection already resolved it against (the same data item 9,
+per-panel delegate resolution, already needs - solving 9 would hand this feature most of
+what it needs for free).
+
 ### Delegate-availability filtering, and its own cache-invalidation gap (step 3)
 
 Confirmed against the bundled Cycles add-on: its Node-Editor-cloned panels
