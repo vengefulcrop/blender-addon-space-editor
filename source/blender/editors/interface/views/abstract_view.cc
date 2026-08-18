@@ -175,6 +175,14 @@ void AbstractView::filter(std::optional<StringRef> filter_str)
        * items are visible by default, and nothing has to be done. */
       item.on_filter();
     }
+    else if (filter_changed) {
+      /* Searching is over. What #on_filter() changed to reveal matches - a tree view
+       * uncollapsing the parents of every match - is not undone by simply making all items
+       * visible again, so give view types a chance to restore what they altered. Guarded on
+       * #filter_changed because this runs on every redraw while the query is empty, and only
+       * the first pass after clearing it has anything to undo. */
+      item.on_filter_end();
+    }
 
     if (filter_changed) {
       item.is_highlighted_search_ = false;

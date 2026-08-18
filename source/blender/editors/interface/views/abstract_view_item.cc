@@ -241,6 +241,11 @@ void AbstractViewItem::on_filter()
   /* No action by default. Needs type specific implementation. */
 }
 
+void AbstractViewItem::on_filter_end()
+{
+  /* No action by default. Needs type specific implementation. */
+}
+
 /** \} */
 
 /* ---------------------------------------------------------------------- */

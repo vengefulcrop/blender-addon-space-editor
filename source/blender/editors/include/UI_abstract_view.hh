@@ -392,6 +392,12 @@ class AbstractViewItem {
 
   virtual void delete_item(bContext *C);
   virtual void on_filter();
+  /**
+   * Called once when the search query goes back to being empty, letting view types undo
+   * whatever #on_filter() changed to make matches reachable. Tree views uncollapse the
+   * parents of matching items there, which would otherwise be a permanent, one-way change.
+   */
+  virtual void on_filter_end();
 
  protected:
   AbstractViewItem() = default;

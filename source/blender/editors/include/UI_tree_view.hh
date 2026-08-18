@@ -244,6 +244,11 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
 
  private:
   bool is_open_ = false;
+  /**
+   * #is_open_ as it was before a search query first forced this item open, so clearing the
+   * query can put it back. Unset while no search has altered this item. See #on_filter().
+   */
+  std::optional<bool> is_open_pre_filter_;
 
  protected:
   /** This label is used as the default way to identifying an item within its parent. */
@@ -317,6 +322,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   AbstractTreeViewItem *get_child();
 
   void on_filter() override;
+  void on_filter_end() override;
   StringRefNull label() const;
 
  protected:

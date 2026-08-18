@@ -743,12 +743,35 @@ void AbstractTreeViewItem::update_from_old(const AbstractViewItem &old)
 
   const AbstractTreeViewItem &old_tree_item = dynamic_cast<const AbstractTreeViewItem &>(old);
   is_open_ = old_tree_item.is_open_;
+  /* Carried over for the same reason as #is_open_ itself: the tree is rebuilt from scratch
+   * every redraw, so a pre-search collapse state left behind on the old item would be lost
+   * long before the search is cleared. */
+  is_open_pre_filter_ = old_tree_item.is_open_pre_filter_;
 }
 
 bool AbstractTreeViewItem::should_be_filtered_visible(StringRefNull filter_string) const
 {
-  return AbstractViewItem::should_be_filtered_visible(filter_string) !=
-         bool(*this->get_tree_view().invert_search_filter_);
+  bool matches = AbstractViewItem::should_be_filtered_visible(filter_string);
+
+  if (!matches) {
+    /* A match on an ancestor makes everything below it a match too. Searching for a parent by
+     * name should reveal what is inside it, the same way matching a directory shows its
+     * contents - without this, a query naming a parent finds only the parent itself and
+     * appears to have emptied it, since none of its children match the query on their own.
+     *
+     * Checked per item against the item's own ancestry rather than propagated downwards while
+     * filtering, because #AbstractView::filter() assigns every item's visibility from this
+     * function as it walks them; a parent marking its children visible would be overwritten
+     * again when the walk reached those children. */
+    for (const AbstractTreeViewItem *parent = parent_; parent; parent = parent->parent_) {
+      if (parent->AbstractViewItem::should_be_filtered_visible(filter_string)) {
+        matches = true;
+        break;
+      }
+    }
+  }
+
+  return matches != bool(*this->get_tree_view().invert_search_filter_);
 }
 
 bool AbstractTreeViewItem::matches_single(const AbstractTreeViewItem &other) const
@@ -839,6 +862,11 @@ bool AbstractTreeViewItem::toggle_collapsed()
 void AbstractTreeViewItem::toggle_collapsed_from_view(bContext &C)
 {
   if (this->toggle_collapsed()) {
+    /* The user collapsing or expanding this themselves replaces whatever a search had forced
+     * it to, so there is no longer an earlier state worth restoring - without this, clearing
+     * the search would revert a change the user made deliberately, and items the search never
+     * touched would keep theirs, which is the same interaction behaving two different ways. */
+    is_open_pre_filter_.reset();
     this->on_collapse_change(C, this->is_collapsed());
   }
 }
@@ -942,9 +970,25 @@ void AbstractTreeViewItem::on_filter()
   if (is_filtered_visible_) {
     foreach_parent([&](AbstractTreeViewItem &item) {
       item.is_filtered_visible_ = true;
+      /* Remember what the user had this item set to before searching forced it open, so
+       * #on_filter_end() can restore it. Only the first search to affect this item records
+       * anything: this runs on every redraw while a query is active, and by the second pass
+       * the stored value would be the opened state rather than the user's own. */
+      if (!item.is_open_pre_filter_.has_value()) {
+        item.is_open_pre_filter_ = item.is_open_;
+      }
       item.set_collapsed(false);
     });
   }
+}
+
+void AbstractTreeViewItem::on_filter_end()
+{
+  if (!is_open_pre_filter_.has_value()) {
+    return;
+  }
+  this->set_collapsed(!*is_open_pre_filter_);
+  is_open_pre_filter_.reset();
 }
 
 StringRefNull AbstractTreeViewItem::label() const
