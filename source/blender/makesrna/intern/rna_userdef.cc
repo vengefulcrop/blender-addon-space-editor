@@ -1093,6 +1093,27 @@ static void rna_userdef_addon_remove(ReportList *reports, PointerRNA *addon_ptr)
   USERDEF_TAG_DIRTY;
 }
 
+static bAddonBookmark *rna_userdef_addon_bookmark_new()
+{
+  bAddonBookmark *entry = MEM_new<bAddonBookmark>("bAddonBookmark");
+  BLI_addtail(&U.addon_bookmarks, entry);
+  USERDEF_TAG_DIRTY;
+  return entry;
+}
+
+static void rna_userdef_addon_bookmark_remove(ReportList *reports, PointerRNA *entry_ptr)
+{
+  bAddonBookmark *entry = static_cast<bAddonBookmark *>(entry_ptr->data);
+  if (BLI_findindex(&U.addon_bookmarks, entry) == -1) {
+    BKE_report(reports, RPT_ERROR, "Add-on bookmark entry is no longer valid");
+    return;
+  }
+  BLI_remlink(&U.addon_bookmarks, entry);
+  MEM_delete(entry);
+  entry_ptr->invalidate();
+  USERDEF_TAG_DIRTY;
+}
+
 static bAddonEditor *rna_userdef_addon_editor_new()
 {
   bAddonEditor *entry = MEM_new<bAddonEditor>("bAddonEditor");
@@ -4624,6 +4645,50 @@ static void rna_def_userdef_addon(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(prop, "rna_Addon_preferences_get", nullptr, nullptr, nullptr);
 }
 
+static void rna_def_userdef_addon_bookmark(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "AddonBookmark", nullptr);
+  RNA_def_struct_sdna(srna, "bAddonBookmark");
+  RNA_def_struct_ui_text(
+      srna, "Add-on Bookmark", "A pinned add-on panel-set, shown in the Add-on Editor's Bookmarks panel");
+
+  prop = RNA_def_property(srna, "module", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Module", "Add-on module name");
+  RNA_def_struct_name_property(srna, prop);
+
+  prop = RNA_def_property(srna, "spacetype", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_space_type_items);
+  RNA_def_property_enum_default(prop, SPACE_EMPTY);
+  RNA_def_property_ui_text(prop, "Editor Type", "Which of the add-on's panel sets this bookmark points to");
+}
+
+static void rna_def_userdef_addon_bookmark_collection(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "AddonBookmarks");
+  srna = RNA_def_struct(brna, "AddonBookmarks", nullptr);
+  RNA_def_struct_ui_text(srna, "Add-on Bookmarks", "Pinned add-on panel-sets");
+
+  func = RNA_def_function(srna, "new", "rna_userdef_addon_bookmark_new");
+  RNA_def_function_flag(func, FUNC_NO_SELF);
+  RNA_def_function_ui_description(func, "Add an add-on bookmark");
+  parm = RNA_def_pointer(func, "addon_bookmark", "AddonBookmark", "", "The new entry");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_userdef_addon_bookmark_remove");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove an add-on bookmark");
+  parm = RNA_def_pointer(func, "addon_bookmark", "AddonBookmark", "", "Entry to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+}
+
 static void rna_def_userdef_addon_editor(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -7888,6 +7953,13 @@ void RNA_def_userdef(BlenderRNA *brna)
       prop, "Add-on Editors", "Add-ons available as full editor types, see the editor type menu");
   rna_def_userdef_addon_editor_collection(brna, prop);
 
+  prop = RNA_def_property(srna, "addon_bookmarks", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "addon_bookmarks", nullptr);
+  RNA_def_property_struct_type(prop, "AddonBookmark");
+  RNA_def_property_ui_text(
+      prop, "Add-on Bookmarks", "Pinned add-on panel-sets, shown in the Add-on Editor's Bookmarks panel");
+  rna_def_userdef_addon_bookmark_collection(brna, prop);
+
   prop = RNA_def_property(srna, "active_addon_editor_index", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "active_addon_editor_index");
   RNA_def_property_ui_text(prop, "Active Add-on Editor Index", "");
@@ -8054,6 +8126,7 @@ void RNA_def_userdef(BlenderRNA *brna)
   rna_def_userdef_system(brna);
   rna_def_userdef_addon(brna);
   rna_def_userdef_addon_editor(brna);
+  rna_def_userdef_addon_bookmark(brna);
   rna_def_userdef_addon_pref(brna);
   rna_def_userdef_studiolights(brna);
   rna_def_userdef_studiolight(brna);

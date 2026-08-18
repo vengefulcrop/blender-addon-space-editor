@@ -11,6 +11,8 @@
 #include "DNA_ID.h"
 #include "DNA_brush_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
+#include "DNA_space_types.h"
 
 #include "BLI_listbase_iterator.hh"
 #include "BLI_sys_types.hh"
@@ -196,6 +198,29 @@ void blo_do_versions_530(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
       }
       if (brush.curve_spacing == nullptr) {
         brush.curve_spacing = BKE_paint_default_curve();
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 503, 12)) {
+    /* The Add-on editor gained a left sidebar (Bookmarks + Add-ons tree). Areas saved
+     * before it existed keep their stored region list verbatim - #ED_area_newspace reuses
+     * a cached, non-empty region list rather than calling #SpaceType::create again - so
+     * the region has to be back-filled here or such files would never show it. */
+    for (bScreen &screen : bmain->screens) {
+      for (ScrArea &area : screen.areabase) {
+        for (SpaceLink &sl : area.spacedata) {
+          if (sl.spacetype != SPACE_ADDON) {
+            continue;
+          }
+          ListBaseT<ARegion> *regionbase = (&sl == area.spacedata.first) ? &area.regionbase :
+                                                                          &sl.regionbase;
+          ARegion *sidebar = do_versions_add_region_if_not_found(
+              regionbase, RGN_TYPE_TOOLS, "Add-on editor sidebar", RGN_TYPE_HEADER);
+          if (sidebar) {
+            sidebar->alignment = RGN_ALIGN_LEFT;
+          }
+        }
       }
     }
   }

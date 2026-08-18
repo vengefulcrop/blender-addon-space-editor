@@ -125,6 +125,14 @@ $build = "<build>"
 
 - `--target INSTALL` is **required**. Building the default target leaves DLLs uncopied
   and the resulting `blender.exe` will not launch.
+- It is equally required after **Python-only** changes, and that failure is silent
+  rather than obvious: `scripts/` is *copied* into
+  `bin/Release/<version>/scripts/` at install time, so building only the `blender`
+  target leaves Blender running whatever copy of `scripts/startup/bl_ui/*.py` was
+  installed last. Edits to `space_addon.py` then have no effect at all, with no error -
+  the panel simply never registers. Cost a long debugging detour on 2026-08-18, chasing
+  C++ causes for a stale 13-day-old script. If a Python change appears to do nothing,
+  check the timestamp of the *installed* copy before anything else.
 - `/m` enables parallel MSBuild.
 
 Output binary:

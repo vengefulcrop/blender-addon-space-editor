@@ -10437,6 +10437,65 @@ void BPY_class_module_name_get(void *py_class, char *r_module, size_t r_module_m
   PyGILState_Release(gilstate);
 }
 
+void BPY_addon_module_info_get(const char *module,
+                               char *r_label,
+                               size_t r_label_maxncpy,
+                               bool *r_is_bundled)
+{
+  r_label[0] = '\0';
+  if (r_is_bundled != nullptr) {
+    *r_is_bundled = false;
+  }
+  if (module == nullptr || module[0] == '\0') {
+    return;
+  }
+
+  const PyGILState_STATE gilstate = PyGILState_Ensure();
+
+  /* Only Python can answer either question: `bl_info` is assembled by `addon_utils`
+   * (from the module itself for a legacy add-on, from the manifest for an extension),
+   * and the module's file path is a Python attribute. Mirrors `_addon_label()` and
+   * `_addon_is_bundled()` in `space_addon.py`, so a name shown from C matches the one
+   * the Python-drawn picker shows for the same add-on. */
+  PyObject *py_addon_utils = PyImport_ImportModule("addon_utils");
+  if (py_addon_utils != nullptr) {
+    /* Borrowed references. An add-on that is enabled but somehow not imported simply
+     * has no info to report, which the empty `r_label` already communicates. */
+    PyObject *py_modules = PyImport_GetModuleDict();
+    PyObject *py_module = (py_modules != nullptr) ? PyDict_GetItemString(py_modules, module) :
+                                                    nullptr;
+    if (py_module != nullptr) {
+      PyObject *py_info = PyObject_CallMethod(py_addon_utils, "module_bl_info", "O", py_module);
+      if (py_info != nullptr) {
+        PyObject *py_name = PyMapping_GetItemString(py_info, "name");
+        if (py_name != nullptr) {
+          if (const char *label = PyUnicode_AsUTF8(py_name)) {
+            BLI_strncpy_utf8(r_label, label, r_label_maxncpy);
+          }
+          Py_DECREF(py_name);
+        }
+        Py_DECREF(py_info);
+      }
+
+      if (r_is_bundled != nullptr) {
+        PyObject *py_file = PyObject_GetAttrString(py_module, "__file__");
+        if (py_file != nullptr) {
+          if (const char *path = PyUnicode_AsUTF8(py_file)) {
+            *r_is_bundled = strstr(path, "addons_core") != nullptr;
+          }
+          Py_DECREF(py_file);
+        }
+      }
+    }
+    Py_DECREF(py_addon_utils);
+  }
+  /* Any of the lookups above may raise (a broken `bl_info`, a missing attribute); none
+   * of it is worth interrupting a redraw over - the caller falls back to the module id. */
+  PyErr_Clear();
+
+  PyGILState_Release(gilstate);
+}
+
 void BPY_free_srna_pytype(StructRNA *srna)
 {
   PyObject *py_ptr = static_cast<PyObject *>(RNA_struct_py_type_get(srna));

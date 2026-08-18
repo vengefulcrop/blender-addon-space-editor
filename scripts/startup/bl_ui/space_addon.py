@@ -6,7 +6,7 @@ import sys
 
 import bpy
 from bpy.types import Header, Operator, Panel, UIList
-from bpy.props import EnumProperty, IntProperty
+from bpy.props import EnumProperty, IntProperty, StringProperty
 
 
 def _addon_display_name(context, addon_id):
@@ -454,6 +454,101 @@ class USERPREF_PT_addon_editors(Panel):
         layout.prop(context.preferences, "addon_editor_max_visible")
 
 
+class ADDON_OT_bookmark_toggle(Operator):
+    """Pin or unpin an add-on panel-set in the Bookmarks sidebar panel"""
+    bl_idname = "addon.bookmark_toggle"
+    bl_label = "Toggle Bookmark"
+    bl_options = {'INTERNAL'}
+
+    module: StringProperty(name="Module", options={'HIDDEN'})
+    spacetype: StringProperty(name="Editor Type", options={'HIDDEN'})
+
+    def execute(self, context):
+        bookmarks = context.preferences.addon_bookmarks
+        for entry in bookmarks:
+            if entry.module == self.module and entry.spacetype == self.spacetype:
+                bookmarks.remove(entry)
+                return {'FINISHED'}
+        entry = bookmarks.new()
+        entry.module = self.module
+        entry.spacetype = self.spacetype
+        return {'FINISHED'}
+
+
+class ADDON_OT_bookmark_activate(Operator):
+    """Host this bookmarked add-on panel-set in the current Add-on Editor"""
+    bl_idname = "addon.bookmark_activate"
+    bl_label = "Open Bookmark"
+    bl_options = {'INTERNAL'}
+
+    module: StringProperty(name="Module", options={'HIDDEN'})
+    spacetype: StringProperty(name="Editor Type", options={'HIDDEN'})
+
+    @classmethod
+    def poll(cls, context):
+        return context.area is not None and context.area.type == 'ADDON'
+
+    def execute(self, context):
+        space = context.area.spaces.active
+        space.addon_id = self.module
+        space.preferred_delegate_spacetype = self.spacetype
+        return {'FINISHED'}
+
+
+class ADDON_PT_bookmarks(Panel):
+    """Pinned add-on panel-sets, so a specific editor type of a specific add-on can be
+    reopened without re-picking it from the header each time"""
+    bl_label = "Bookmarks"
+    bl_idname = "ADDON_PT_bookmarks"
+    bl_space_type = 'ADDON'
+    bl_region_type = 'TOOLS'
+    bl_options = {'HIDE_HEADER'}
+
+    def draw(self, context):
+        layout = self.layout
+        bookmarks = context.preferences.addon_bookmarks
+
+        header = layout.row()
+        header.label(text="Bookmarks", icon='BOOKMARKS')
+
+        # A pin toggle for whatever the current area is actually showing right now -
+        # not space.preferred_delegate_spacetype directly, since that can be 'EMPTY'
+        # ("Auto"). context_delegate_spacetype is the one resolved delegate that
+        # produced, the same distinction the header's own accessor comment (below)
+        # exists to avoid getting backwards.
+        area = context.area
+        space = area.spaces.active if area is not None else None
+        if space is not None and getattr(space, "addon_id", None) and area.context_delegate_spacetype != 'EMPTY':
+            is_bookmarked = any(
+                entry.module == space.addon_id and entry.spacetype == area.context_delegate_spacetype
+                for entry in bookmarks
+            )
+            props = header.operator(
+                "addon.bookmark_toggle", text="",
+                icon='SOLO_ON' if is_bookmarked else 'SOLO_OFF', emboss=False,
+            )
+            props.module = space.addon_id
+            props.spacetype = area.context_delegate_spacetype
+
+        if not bookmarks:
+            layout.label(text="No bookmarks yet", icon='INFO')
+            return
+
+        for entry in bookmarks:
+            name, icon = _space_type_icon_name(entry.spacetype)
+            display_name = _addon_display_name(context, entry.module)
+
+            row = layout.row(align=True)
+            props = row.operator(
+                "addon.bookmark_activate", text=f"{display_name}: {name}", icon=icon)
+            props.module = entry.module
+            props.spacetype = entry.spacetype
+
+            props = row.operator("addon.bookmark_toggle", text="", icon='X', emboss=False)
+            props.module = entry.module
+            props.spacetype = entry.spacetype
+
+
 classes = (
     ADDON_OT_supported_editors_info,
     ADDON_OT_set_preferred_delegate_spacetype,
@@ -463,6 +558,9 @@ classes = (
     ADDON_OT_editor_remove,
     ADDON_UL_editors,
     USERPREF_PT_addon_editors,
+    ADDON_OT_bookmark_toggle,
+    ADDON_OT_bookmark_activate,
+    ADDON_PT_bookmarks,
 )
 
 if __name__ == "__main__":  # only for live edit.

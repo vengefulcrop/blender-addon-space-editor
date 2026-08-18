@@ -68,7 +68,15 @@ static SpaceLink *addon_create(const ScrArea * /*area*/, const Scene * /*scene*/
   region->regiontype = RGN_TYPE_HEADER;
   region->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
-  /* Main region. */
+  /* Sidebar (Bookmarks + Addons tree). */
+  region = BKE_area_region_new();
+  BLI_addtail(&saddon->regionbase, region);
+  region->regiontype = RGN_TYPE_TOOLS;
+  region->alignment = RGN_ALIGN_LEFT;
+
+  /* Main region. Must be added last: #region_rect_recursive carves the area up in
+   * region-list order, and this region (alignment #RGN_ALIGN_NONE) takes whatever is
+   * left over - anything appended after it would be left with no space at all. */
   region = BKE_area_region_new();
   BLI_addtail(&saddon->regionbase, region);
   region->regiontype = RGN_TYPE_WINDOW;
@@ -891,6 +899,19 @@ void ED_spacetype_addon()
   art->draw = addon_header_region_draw;
 
   BLI_addhead(&st->regiontypes, art);
+
+  /* Regions: sidebar (Bookmarks + Addons tree). */
+  art = MEM_new_zeroed<ARegionType>("spacetype addon region");
+  art->regionid = RGN_TYPE_TOOLS;
+  art->prefsizex = 240;
+  art->keymapflag = ED_KEYMAP_UI;
+
+  art->init = ED_region_panels_init;
+  art->layout = ED_region_panels_layout;
+  art->draw = ED_region_panels_draw;
+
+  BLI_addhead(&st->regiontypes, art);
+  addon_tools_region_panels_register(art);
 
   BKE_spacetype_register(std::move(st));
 }

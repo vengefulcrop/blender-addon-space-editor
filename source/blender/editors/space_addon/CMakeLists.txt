@@ -13,6 +13,7 @@ set(INC_SYS
 
 set(SRC
   space_addon.cc
+  addon_tree_view.cc
 
   addon_intern.hh
 )

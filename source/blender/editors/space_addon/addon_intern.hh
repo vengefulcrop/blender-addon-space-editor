@@ -36,4 +36,8 @@ struct SpaceAddon_Runtime {
   uint64_t cached_screen_signature = 0;
 };
 
+/** Registers the "Addons" hierarchical tree panel onto the sidebar region type
+ * (`addon_tree_view.cc`). */
+void addon_tools_region_panels_register(ARegionType *art);
+
 }  // namespace blender

@@ -190,7 +190,13 @@ enum eUserpref_UI_Flag2 : char {
    * Editor's picker, not just user-installed ones. Off by default: bundled add-ons'
    * panels are usually gated on scene state (active render engine, pose mode, ...)
    * that has nothing to do with which editor is open, so they would otherwise appear
-   * pickable and then draw nothing under the picker's own default conditions. */
+   * pickable and then draw nothing under the picker's own default conditions.
+   *
+   * \note Added here despite this enum's "use 'uiflag' instead" note above, which is
+   * out of date: #eUserpref_UI_Flag has no free bits left - every bit from `1 << 0` to
+   * `1u << 31` is allocated (`1 << 29` only looks free, it is a still-occupied
+   * deprecated entry). This reuses `1 << 2`, which was previously marked cleared,
+   * with `blo_do_versions_userdef` clearing any stale value from old files. */
   USER_ADDON_EDITOR_SHOW_BUNDLED = (1 << 2),
   USER_UIFLAG2_UNUSED_3 = (1 << 3), /* dirty */
   USER_UIFLAG2_UNUSED_4 = (1 << 4), /* Not cleared! */
@@ -612,6 +618,21 @@ struct bAddonEditor {
    * before this field existed).
    */
   char name[128] = "";
+};
+
+/**
+ * A specific add-on panel-set the user has pinned for quick access from the Add-on
+ * Editor's Bookmarks sidebar panel (see #SpaceAddon). Distinct from #bAddonEditor:
+ * an editor-type curation entry offers an add-on at all, a bookmark shortcuts to one
+ * specific space type of one specific add-on.
+ */
+struct bAddonBookmark {
+  struct bAddonBookmark *next = nullptr, *prev = nullptr;
+  /** Python module name, matching #bAddon::module and #SpaceAddon::addon_id. */
+  char module[128] = "";
+  /** #eSpace_Type of the bookmarked panel set. */
+  short spacetype = 0;
+  char _pad0[6] = {};
 };
 
 /** #bPathCompare.flag */
@@ -1069,6 +1090,9 @@ struct UserDef {
   ListBaseT<bAddon> addons = {nullptr, nullptr};
   /** Add-ons curated as full editors, see #bAddonEditor. */
   ListBaseT<bAddonEditor> addon_editors = {nullptr, nullptr};
+  /** Pinned add-on panel-sets, see #bAddonBookmark. Shown in the Add-on Editor's
+   * Bookmarks sidebar panel. */
+  ListBaseT<bAddonBookmark> addon_bookmarks = {nullptr, nullptr};
   /** Active index into #addon_editors, for the Preferences UI list. */
   int active_addon_editor_index = 0;
   /**

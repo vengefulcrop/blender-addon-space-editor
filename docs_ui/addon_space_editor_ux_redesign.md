@@ -1,6 +1,7 @@
 # Add-on Space Editor — Sidebar / Bookmarks UX Redesign
 
-**Status**: design discussion only, not scoped into the implementation plan, not started.
+**Status**: first pass implemented and functional (2026-08-18); several pieces from this
+document are deliberately still unbuilt - see §6.
 **Related**: [addon_space_editor_plan.md](addon_space_editor_plan.md),
 [punch_list.md](punch_list.md)
 
@@ -117,7 +118,72 @@ to it cost a rebuild rather than a reload.
 
 ---
 
-## 5. Open questions, not yet resolved
+## 5. What the first pass actually built (2026-08-18)
+
+Functional, verified by launching a real build: the sidebar renders, the tree lists
+add-ons with their real display names, expands to per-editor-type rows, and selecting a
+row hosts that add-on/space-type pair. Bookmarks pin, unpin, list, and reopen.
+
+**Built:**
+- `bAddonBookmark` DNA + `UserDef::addon_bookmarks`, RNA (`AddonBookmark`,
+  `addon_bookmarks` collection with `new`/`remove`), and blend-file list I/O.
+- Left `RGN_TYPE_TOOLS` region on `SPACE_ADDON` (`prefsizex` 240, `RGN_ALIGN_LEFT`),
+  using the stock `ED_region_panels_init/layout/draw` triple so C-native and
+  Python panels coexist in it.
+- `addon_tree_view.cc` - `AddonTreeView : ui::AbstractTreeView`, cloned from
+  `asset_catalog_tree_view.cc` as planned, trimmed to `build_tree()` +
+  `BasicTreeViewItem` rows + `set_on_activate_fn`. No drag/drop, rename, or context
+  menu, per §4.
+- `BPY_addon_module_info_get()` (`bpy_rna.cc` / `BPY_extern.hh`) - new BPY helper
+  resolving a module's `bl_info["name"]` and whether it is bundled. **Not in the
+  original plan**, but required: a C-drawn list cannot show extension module ids
+  (`bl_ext.<repo>.<addon>` is an import path, not a name), and only Python can resolve
+  either fact. Mirrors `_addon_label()`/`_addon_is_bundled()` so the tree and the
+  Python-drawn picker agree.
+- Versioning (`versioning_530.cc`, subversion 11 -> 12) back-filling the sidebar region
+  into `SPACE_ADDON` areas saved before it existed.
+- `ADDON_PT_bookmarks`, `ADDON_OT_bookmark_toggle`, `ADDON_OT_bookmark_activate`
+  (Python).
+
+**Three bugs worth remembering**, all of which presented identically as "the sidebar
+simply is not there":
+1. `/t:blender` builds the executable but does **not** copy `scripts/` into the runtime
+   tree - Blender ran a 13-day-old `space_addon.py`, so the Python panel never
+   registered. The `INSTALL` project (`INSTALL.vcxproj`, not `/t:INSTALL` on the
+   solution) is what syncs scripts. Worth adding to `building.md`.
+2. Region order matters: `region_rect_recursive` carves the area up in region-list
+   order and the `RGN_ALIGN_NONE` main region claims the remainder, so the sidebar
+   appended *after* it got 1px. Every space type adds its main region last;
+   `addon_create()` now does too.
+3. `ED_area_newspace` reuses a cached, non-empty region list rather than calling
+   `create()` again, so existing areas never gain a newly added region - that is what
+   the versioning above exists for. An attempt to do this in `blend_read_data` was
+   wrong and reverted: that hook only sees `SpaceLink::regionbase`, which is empty for
+   the *active* space (its regions live in `ScrArea::regionbase`).
+
+**Not built yet** - the "must still be worked on" list:
+- Search/filter in either panel (planned `UIList` `filter_items()` for Bookmarks; the
+  tree has no filter box wired up either).
+- Bookmarks is drawn as a plain operator list, not the searchable `UIList` §2 called for.
+- Tree rows have no pin/bookmark affordance - bookmarking is only possible from the
+  Bookmarks panel header, for whatever the area currently hosts.
+- No active-row highlight in the tree (`set_is_active_fn` is unused, so the row matching
+  the currently hosted add-on is not visually marked).
+- The versioning back-fill is written to the upstream idiom but **untested** - no
+  pre-sidebar `.blend` has been loaded through it yet.
+- Tree row identity relies on default label-based `matches_single()`; if two add-ons
+  ever share a display name their expand state would alias.
+- **`BPY_addon_module_info_get()` is called per add-on on every `build_tree()`**, i.e.
+  every sidebar redraw, each call taking the GIL. `addon_utils.module_bl_info()`
+  early-returns once an add-on is warmed up, but still rebuilds its `_bl_info_basis()`
+  dict every time, so the cost is small but real and scales with the number of enabled
+  add-ons. Deliberately *not* fixed with a static label cache in this pass: that would
+  add a second process-wide mutable cache of exactly the kind already questioned for
+  `addon_poll_failed_get` (`punch_list.md` item 12). If it needs fixing, the consistent
+  invalidation signal is `BKE_paneltypes_state_get()`, which this feature already uses
+  for `SpaceAddon_Runtime::cached_paneltypes_state`.
+
+## 6. Open questions, not yet resolved
 
 - Exact bookmark DNA shape: reuse/extend `bAddonEditor` itself, or a new sibling
   struct? `bAddonEditor` currently represents "a curated add-on the picker offers,"

@@ -151,6 +151,25 @@ void BPY_free_srna_pytype(StructRNA *srna);
 void BPY_class_module_name_get(void *py_class, char *r_module, size_t r_module_maxncpy);
 
 /**
+ * Look up an add-on module's human-readable name (its `bl_info["name"]`, e.g. "Node
+ * Wrangler") and whether it ships with Blender itself.
+ *
+ * Needed because a module id is not presentable on its own: for an extension it is the
+ * full `bl_ext.<repository>.<addon>` import path. Only Python can resolve either fact,
+ * so C-drawn UI listing add-ons has to ask for it here rather than showing the id.
+ *
+ * Writes an empty \a r_label when the name cannot be determined (add-on not imported,
+ * malformed `bl_info`); callers should fall back to the module id in that case.
+ *
+ * \param module: Add-on module id, as in #bAddon::module.
+ * \param r_is_bundled: Set to true for add-ons under `scripts/addons_core`. Optional.
+ */
+void BPY_addon_module_info_get(const char *module,
+                               char *r_label,
+                               size_t r_label_maxncpy,
+                               bool *r_is_bundled);
+
+/**
  * Avoids duplicating keyword list.
  */
 [[nodiscard]] bool BPY_string_is_keyword(const char *str);

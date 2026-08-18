@@ -1309,6 +1309,10 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
     writer->write_struct(&addon_editor);
   }
 
+  for (const bAddonBookmark &addon_bookmark : userdef->addon_bookmarks) {
+    writer->write_struct(&addon_bookmark);
+  }
+
   for (const bPathCompare &path_cmp : userdef->autoexec_paths) {
     writer->write_struct(&path_cmp);
   }
