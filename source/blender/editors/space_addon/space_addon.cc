@@ -36,6 +36,7 @@
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 
+#include "UI_interface_c.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
@@ -593,11 +594,56 @@ static void addon_main_region_layout(const bContext *C, ARegion *region)
                              nullptr,
                              nullptr,
                              area_delegate ? &ctx_override : nullptr);
+
+  /* Recorded here rather than asked again at draw time, because it is only answerable
+   * right after a layout pass. See #addon_main_region_draw. */
+  saddon->runtime->drew_nothing = ui::region_panels_drew_nothing(region);
 }
 
 /* Note: layout and drawing are deliberately separate callbacks. The region layout pass
  * runs before drawing and establishes the region size and View2D bounds, so doing the
  * layout from the draw callback would draw against stale metrics. */
+
+/**
+ * Draw the panels, and say so when they came to nothing.
+ *
+ * The #ADDON_PT_empty_state fallback only covers the case where no panel type was
+ * collected at all. A hosted add-on can just as easily register panels that are all
+ * filtered out by their own `poll()`, or that draw no content in the current state - a
+ * UV tool with nothing selected, or one whose panel is registered for the Properties
+ * editor while that editor sits on a different tab (see the note in the implementation
+ * log). All three leave the region blank, and only the first explains itself.
+ *
+ * Drawn over the region rather than injected as another panel on purpose: a panel would
+ * make the region non-empty, which would remove the panel again, which would make it
+ * empty - a notice that flickers rather than one that shows.
+ */
+static void addon_main_region_draw(const bContext *C, ARegion *region)
+{
+  ED_region_panels_draw(C, region);
+
+  const ScrArea *area = CTX_wm_area(C);
+  const SpaceAddon *saddon = static_cast<const SpaceAddon *>(area->spacedata.first);
+  if (!saddon->runtime->drew_nothing || saddon->addon_id[0] == '\0') {
+    return;
+  }
+
+  /* Deliberately does not try to say *what* is missing. Which of the three causes above
+   * applies is only answerable by interpreting an add-on's own `poll()`, which this fork
+   * has declined to attempt everywhere else it has come up.
+   *
+   * #ED_region_info_draw is the same overlay other editors use to explain themselves
+   * (the 3D viewport's "Clipped" / render-border notices), so this reads as a normal
+   * Blender message rather than something this editor invented. */
+  const char *lines[] = {
+      IFACE_("This add-on's panels are drawing nothing right now"),
+      IFACE_("They may need a specific selection, mode, or editor state"),
+      IFACE_("- see the add-on's own documentation"),
+      nullptr,
+  };
+  const float fill_color[4] = {0.0f, 0.0f, 0.0f, 0.25f};
+  ED_region_info_draw_multiline(const_cast<ARegion *>(region), lines, fill_color, true);
+}
 
 /**
  * Redraw when anything a hosted panel might be reading has changed.
@@ -685,7 +731,7 @@ void ED_spacetype_addon()
 
   art->init = addon_main_region_init;
   art->layout = addon_main_region_layout;
-  art->draw = ED_region_panels_draw;
+  art->draw = addon_main_region_draw;
   art->listener = addon_main_region_listener;
 
   BLI_addhead(&st->regiontypes, art);

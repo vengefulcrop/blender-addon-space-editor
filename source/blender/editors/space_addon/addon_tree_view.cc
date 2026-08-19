@@ -127,43 +127,79 @@ class AddonTreeView : public ui::AbstractTreeView {
   void build_tree() override;
 };
 
+/** One add-on worth listing, resolved once so the two ordering passes below need no
+ * repeated Python lookups. */
+struct AddonTreeEntry {
+  std::string module;
+  std::string display_name;
+  Vector<short> space_types;
+  bool is_bundled = false;
+};
+
 void AddonTreeView::build_tree()
 {
   const bool show_bundled = (U.uiflag2 & USER_ADDON_EDITOR_SHOW_BUNDLED) != 0;
 
+  Vector<AddonTreeEntry> entries;
   for (const bAddon &addon : U.addons) {
-    const Vector<short> space_types = BKE_paneltypes_addon_space_types_get(addon.module);
-    if (space_types.is_empty()) {
+    AddonTreeEntry entry;
+    entry.space_types = BKE_paneltypes_addon_space_types_get(addon.module);
+    if (entry.space_types.is_empty()) {
       /* Enabled, but registers no panels at all - nothing to host, skip it. */
       continue;
     }
 
-    bool is_bundled = false;
-    const std::string display_name = addon_display_name(addon.module, &is_bundled);
+    entry.display_name = addon_display_name(addon.module, &entry.is_bundled);
 
-    /* Same opt-in the picker applies (`_installed_addon_items`, `space_addon.py`):
-     * bundled add-ons have real panels, but ones typically gated on scene state rather
-     * than on which editor is open, so they look pickable and then draw nothing. */
-    if (is_bundled && !show_bundled) {
+    /* Same opt-in the picker used to apply: bundled add-ons have real panels, but ones
+     * typically gated on scene state rather than on which editor is open, so they look
+     * pickable and then draw nothing. */
+    if (entry.is_bundled && !show_bundled) {
       continue;
     }
 
-    ui::BasicTreeViewItem &addon_item = add_tree_item<ui::BasicTreeViewItem>(display_name,
-                                                                            ICON_PLUGIN);
+    entry.module = addon.module;
+    entries.append(std::move(entry));
+  }
 
-    for (const short spacetype : space_types) {
-      const char *name;
-      int icon;
-      space_type_name_and_icon(spacetype, &name, &icon);
+  /* Bundled add-ons first, and marked with Blender's own icon rather than the generic
+   * plug-in one - they are a different kind of thing from what the user installed, and
+   * only appear here at all when the preference above is on, so grouping them keeps them
+   * from being scattered through a list of the user's own add-ons. Order within each
+   * group is left as-is (#UserDef::addons order); the view's own A-Z toggle sorts. */
+  for (const bool bundled_pass : {true, false}) {
+    for (const AddonTreeEntry &entry : entries) {
+      if (entry.is_bundled != bundled_pass) {
+        continue;
+      }
 
-      ui::BasicTreeViewItem &space_type_item = addon_item.add_tree_item<ui::BasicTreeViewItem>(
-          name, icon);
+      ui::BasicTreeViewItem &addon_item = add_tree_item<ui::BasicTreeViewItem>(
+          entry.display_name, entry.is_bundled ? ICON_BLENDER : ICON_PLUGIN);
 
-      const std::string module_copy = addon.module;
-      space_type_item.set_on_activate_fn(
-          [module_copy, spacetype](bContext &C, ui::BasicTreeViewItem & /*item*/) {
-            addon_tree_activate(C, module_copy.c_str(), spacetype);
+      /* Clicking the add-on itself hosts its first editor type, rather than only
+       * expanding to reveal children that all have to be clicked separately. With one
+       * declared editor type - the common case - that makes the parent row the whole
+       * interaction. */
+      const std::string module_copy = entry.module;
+      const short first_spacetype = entry.space_types.first();
+      addon_item.set_on_activate_fn(
+          [module_copy, first_spacetype](bContext &C, ui::BasicTreeViewItem & /*item*/) {
+            addon_tree_activate(C, module_copy.c_str(), first_spacetype);
           });
+
+      for (const short spacetype : entry.space_types) {
+        const char *name;
+        int icon;
+        space_type_name_and_icon(spacetype, &name, &icon);
+
+        ui::BasicTreeViewItem &space_type_item = addon_item.add_tree_item<ui::BasicTreeViewItem>(
+            name, icon);
+
+        space_type_item.set_on_activate_fn(
+            [module_copy, spacetype](bContext &C, ui::BasicTreeViewItem & /*item*/) {
+              addon_tree_activate(C, module_copy.c_str(), spacetype);
+            });
+      }
     }
   }
 }

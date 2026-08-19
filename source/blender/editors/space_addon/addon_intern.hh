@@ -34,6 +34,12 @@ struct SpaceAddon_Runtime {
    * editor elsewhere in the screen must therefore also invalidate the cache.
    */
   uint64_t cached_screen_signature = 0;
+
+  /**
+   * Whether the last layout pass produced nothing visible, so the draw pass can say so.
+   * Runtime only: it describes one pass, not anything worth storing in a file.
+   */
+  bool drew_nothing = false;
 };
 
 /** Registers the "Addons" hierarchical tree panel onto the sidebar region type

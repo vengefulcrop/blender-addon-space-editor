@@ -1979,6 +1979,25 @@ void panels_begin(const bContext * /*C*/, ARegion *region)
   panels_layout_begin_clear_flags(&region->panels);
 }
 
+bool region_panels_drew_nothing(const ARegion *region)
+{
+  for (const Panel &panel : region->panels) {
+    if ((panel.runtime_flag & PANEL_ACTIVE) == 0) {
+      continue;
+    }
+    /* An active panel with a header is itself something on screen, whether or not its
+     * contents came out empty. Only header-less panels can be present and yet leave the
+     * region looking blank, so those are judged on whether they produced any buttons. */
+    if (panel.type == nullptr || (panel.type->flag & PANEL_TYPE_NO_HEADER) == 0) {
+      return false;
+    }
+    if (panel.runtime->block != nullptr && !panel.runtime->block->buttons_ptrs.is_empty()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void panels_end(const bContext *C, ARegion *region, int *r_x, int *r_y)
 {
   ScrArea *area = CTX_wm_area(C);

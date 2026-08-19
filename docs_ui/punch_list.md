@@ -202,6 +202,40 @@ All verified real via direct source inspection (not just asserted by an audit).
     comment explaining why) — never `context.space_data`. Worth a one-line callout in
     the plan doc so this doesn't have to be independently rediscovered later.
 
+14. **Fold the "drawing nothing" notice into the empty-state panel** (2026-08-19, not
+    built). There are two message systems saying overlapping things: the Python
+    `ADDON_PT_empty_state` panel ("this add-on needs one of these editors open"), drawn
+    when *no panel types were collected*, and a C++ overlay via
+    `ED_region_info_draw_multiline` (`addon_main_region_draw`), drawn when panels were
+    collected but produced nothing. They look different and are written in different
+    languages for what the user experiences as one situation.
+
+    **Why it wasn't done that way to begin with**: injecting the notice as a panel
+    oscillates. The region is judged empty, so the panel is added, so the region is no
+    longer empty, so the panel is removed - a notice that flickers rather than shows.
+
+    **The fix that makes it work**, and it is the same trick the removed
+    `only_fallback_panel` check used, for a better reason: have the "did anything draw"
+    judgement *ignore this editor's own fallback panel*. Then the state is stable - real
+    panels drawing nothing keeps the fallback up, real panels drawing keeps it away, and
+    neither flips the other. That is inherent to the feature rather than a workaround.
+
+    Sketch: `ui::region_panels_drew_nothing()` takes an idname to disregard (or this
+    editor filters it out itself); `addon_panel_types_collect` injects the fallback when
+    the list is empty *or* the previous pass drew nothing; the reason is exposed to
+    Python as a read-only RNA bool on `SpaceAddon` backed by a getter reading
+    `SpaceAddon_Runtime::drew_nothing` - **no DNA field needed**, RNA getters can read
+    runtime state; `ADDON_PT_empty_state.draw()` branches on it. Then `art->draw` goes
+    back to plain `ED_region_panels_draw` and the C++ overlay is deleted.
+
+    Accept a one-pass lag: `drew_nothing` is computed after
+    `ED_region_panels_layout_ex` returns, while the fallback panel draws inside it, so
+    the panel reads the previous pass's value. Harmless for state this stable.
+
+    Payoff beyond consistency: the message becomes Python, so wording and layout are
+    iterable without a rebuild, and it can use the icons and structure the empty-state
+    panel already has.
+
 ## Open, not yet investigated
 
 12. **Global poll-failure blacklist** (`addon_poll_failed_get`, a static

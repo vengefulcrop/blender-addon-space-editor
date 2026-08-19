@@ -2181,6 +2181,17 @@ void button_drag_set_image(Button *but, const char *path, int icon, const ImBuf 
 void panels_begin(const bContext *C, ARegion *region);
 void panels_end(const bContext *C, ARegion *region, int *r_x, int *r_y);
 /**
+ * Whether the last layout pass left this region with nothing for the user to look at.
+ *
+ * True when no panel was laid out at all, and also when the only ones that were are
+ * header-less and produced no buttons - a panel that polled true and then drew nothing
+ * leaves a region just as blank as one with no panels, but is invisible to a plain
+ * "is the panel list empty" test.
+ *
+ * Only meaningful after a layout pass has run for \a region.
+ */
+bool region_panels_drew_nothing(const ARegion *region);
+/**
  * Draw panels, selected (panels currently being dragged) on top.
  */
 void panels_draw(const bContext *C, ARegion *region);
