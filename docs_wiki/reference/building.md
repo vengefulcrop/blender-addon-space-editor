@@ -19,7 +19,10 @@ this document instead.
 
 ## Environment
 
-| Component | Path or version on this machine |
+`<repo>` is the clone directory, and `<build>` is the build directory.
+Both are absolute paths on your machine.
+
+| Component | Path or version |
 | :--- | :--- |
 | Source | `<repo>` |
 | Build dir | `<build>` |

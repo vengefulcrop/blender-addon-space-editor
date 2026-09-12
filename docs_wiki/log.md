@@ -252,3 +252,9 @@ pyareas OKF knowledge base.
     to 49.
   - Replaced the root `README.md` with the fork README, and deleted
     `.github/README.md`, which carried the upstream Blender text.
+- **2026-09-12** (Agent: Claude Opus 5):
+  - Vendored the ASD-STE100 linter as
+    [tools/ste_lint.py](./tools/ste_lint.py), under its MIT license. Rule 9 of
+    `CLAUDE.md` named a path outside the repository.
+  - Replaced the machine paths in [building.md](./reference/building.md) with
+    `<repo>` and `<build>`.
