@@ -602,9 +602,16 @@ struct bAddon {
 };
 
 /**
- * An add-on the user has chosen to make available as a full editor (see #SpaceAddon).
- * Curated explicitly, rather than derived from which add-ons happen to be enabled, so
- * that the editor type menu lists only add-ons the user actually wants there.
+ * A display name override for an add-on hosted in the Add-on Editor (see #SpaceAddon).
+ *
+ * This list no longer selects which add-ons are offered. #AddonTreeView::build_tree
+ * iterates #UserDef::addons directly, and offers every enabled add-on that registers
+ * panels. The list is read only as a display name fallback, in
+ * `addon_tree_view.cc: addon_display_name` and in `bl_ui/space_addon.py`.
+ *
+ * Nothing fills the list any more. The curated-list picker that called
+ * `preferences.addon_editors.new()` was removed. Entries survive only in a preference
+ * file written before that change.
  */
 struct bAddonEditor {
   struct bAddonEditor *next = nullptr, *prev = nullptr;
@@ -1088,18 +1095,20 @@ struct UserDef {
   ListBaseT<struct wmKeyMap> user_keymaps = {nullptr, nullptr};
   ListBaseT<struct wmKeyConfigPref> user_keyconfig_prefs = {nullptr, nullptr};
   ListBaseT<bAddon> addons = {nullptr, nullptr};
-  /** Add-ons curated as full editors, see #bAddonEditor. */
+  /** Display name overrides for hosted add-ons, see #bAddonEditor. Read only. */
   ListBaseT<bAddonEditor> addon_editors = {nullptr, nullptr};
   /** Pinned add-on panel-sets, see #bAddonBookmark. Shown in the Add-on Editor's
    * Bookmarks sidebar panel. */
   ListBaseT<bAddonBookmark> addon_bookmarks = {nullptr, nullptr};
-  /** Active index into #addon_editors, for the Preferences UI list. */
+  /**
+   * Unused. It was the active index of the Preferences list that the curated-list
+   * picker used. No UI list reads it now. Scheduled for deletion.
+   */
   int active_addon_editor_index = 0;
   /**
-   * How many #addon_editors entries, in the order they were added, show in the
-   * editor-type drop-down - 0 means show all. #addon_editors itself is never capped or
-   * reordered by this: every curated entry stays in the list and in Preferences, just
-   * not necessarily in the drop-down once there are more than this many.
+   * Unused. It capped how many #addon_editors entries showed in the editor type
+   * drop-down. That drop-down went with the curated-list picker, and the sidebar tree
+   * replaced it. Nothing reads the value. Scheduled for deletion.
    */
   short addon_editor_max_visible = 0;
   /** Pad to keep subsequent pointer-containing members 8-byte aligned. */
