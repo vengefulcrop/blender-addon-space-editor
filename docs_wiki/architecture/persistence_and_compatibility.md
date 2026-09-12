@@ -76,7 +76,7 @@ does not corrupt unrelated data.
 ## Resaving through a build that does not know `SPACE_ADDON`
 
 Opening a fork-saved file elsewhere is safe (above). Resaving it from
-there causes real, silent data loss, per the actual write path
+there causes real data loss, with no warning, per the actual write path
 (`BKE_screen_area_map_blend_write`, `blenkernel/intern/screen.cc:1493`):
 
 ```cpp
@@ -180,7 +180,7 @@ was fully saturated at 32/32 bits before this fork touched it.
 
 **Residual risk**: if a future upstream Blender version claims this same
 bit for an unrelated flag, rebasing onto that commit produces an ordinary
-merge conflict on that one enum line, not silent corruption.
+merge conflict on that one enum line, not corruption.
 
 ## Related
 

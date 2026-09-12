@@ -46,4 +46,6 @@ the full table, and for the commands that measure the gap.
 - [OKF Specification](./reference/okf_spec.md) — The canonical v0.2 format.
 - [Validation Tool](./tools/validate_okf.py) — The conformance linter
   (`python docs_wiki/tools/validate_okf.py`).
+- [Register Wordlist and Patterns](./tools/register_wordlist.md) — Banned
+  novelistic, dramatic, and conversational phrasing patterns.
 - [Mutation Ledger](./log.md) — The audit record of knowledge base changes.

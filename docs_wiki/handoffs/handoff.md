@@ -1,123 +1,110 @@
 ---
 type: operation
-title: "Add-on Space Editor — Session Handoff"
-description: "Current state of the pyareas/addon-space-editor branch: what works, what is in progress, and what is next"
+title: "Add-on Space Editor — Handoff"
+description: "State of the pyareas/addon-space-editor branch: what works, what is open, and what a second developer does first"
 tags: [addon-space-editor, handoff]
 last_updated: 2026-09-12
 ---
 
-# Session Handoff
+# Add-on Space Editor — Handoff
 
-Branch: `pyareas/addon-space-editor`. Based on
-`docs_ui/punch_list.md`, `docs_ui/legacy/code_review.md`,
-`docs_ui/addon_space_editor_testing.md`, and the git log up to commit
-`9ba0d6b569c` ("Add-on Editor: tree row activation, bundled add-ons, and a drawing-nothing notice").
+Branch `pyareas/addon-space-editor`, 97 commits on upstream `main` at
+`027ef661892` (2026-07-31). The diff touches 43 files under `source/` and
+`scripts/`: 2346 insertions, 43 deletions.
 
-## What works
+Blender 5.3.0 alpha. See
+[Upstream Base and Version](../reference/upstream_base.md) for the full
+table and the commands that measure the gap to current upstream.
 
-The Add-on Space Editor (`SPACE_ADDON`) hosts real add-on panels in a
-real editor area, with context delegation borrowing an open editor context
-so hosted panels poll and draw correctly.
+## What the feature does
 
-The developer fixed the following defects.
-See [operations/bugfix.md](../operations/bugfix.md) for each symptom and cause.
+`SPACE_ADDON` is a new editor type. It hosts the panels of one add-on in a
+real editor area. The panels poll and draw correctly, because the area
+borrows context from an open editor of the type each panel was written for.
 
-- `U.addon_editors` now saves and loads correctly, with proper blenloader
-  support and a template swap (bugfix item 1).
-- Versioning code clears the reused userpref flag bit on load
-  (bugfix item 2).
-- Panel enumeration correctly filters to registered, non-duplicated panel
-  classes on the Python side (bugfix item 3).
-- Panel layout, collapse state, and drag order survive a file load and a
-  mid-session screen-signature change (bugfix item 4).
-- Mixed-editor add-ons, such as ucupaint, no longer get polled against
-  the wrong space, and no longer hang Blender (bugfix items 6 and 7).
-- Switching an Add-on editor area to a stock editor type no longer
-  crashes (bugfix item 8).
-- The empty-state context-delegation crash and the multi-window dropdown
-  leak are both fixed (bugfix items 9 and 10).
-- Context delegation itself moved from a `SpaceAddon`-specific field to a
-  generic `ScrArea::context_delegate_spacetype`, so `blenkernel` no
-  longer names this editor by string, except in `CTX_wm_space_addon()`'s
-  own one-line body.
-- Commit `06d699437bb` ("Add-on Editor: remove the curated-list
-  picker, tree replaces it") removed the curated-list add-on picker,
-  replacing it with a tree view.
+The editor type menu shows one plain "Add-on" entry. A sidebar tree lists
+every enabled add-on that registers panels, and activating a row hosts it.
 
-## What is in progress
+Read [Add-on Space Type](../architecture/addon_space_type.md) first, then
+[Panel Hosting](../architecture/panel_hosting.md) and
+[Context Delegation](../architecture/context_delegation.md).
 
-The most recent four commits on the branch touch context delegation and
-the tree-based picker directly:
+## First steps in a fresh clone
 
-- `9ba0d6b569c` ("Add-on Editor: tree row activation, bundled add-ons, and a drawing-nothing notice")
-- `06d699437bb` ("Add-on Editor: remove the curated-list picker, tree
-  replaces it"). This changes the scope of the sentinel-byte picker
-  marker, `SPACE_ADDON_ID_PICK_MARKER = ''`. See
-  [operations/todo.md](../operations/todo.md) item 25.
-- `d60d293448d` ("Add-on Editor: scope context delegation to panel callbacks, fix extension names")
-- `5608e75d78e` ("UI: let ED_region_panels_layout_ex run panel callbacks under an overridden context")
+1. Read [Upstream Base and Version](../reference/upstream_base.md) and note
+   the base commit. Every line number in this knowledge base is measured
+   against it.
+2. Run `tools/oft/fetch_oft.sh`, then `tools/oft/install_hook.sh`. See
+   [Traceability](../reference/traceability.md).
+3. Build. See [Building This Fork](../reference/building.md).
+4. Before any rebase, read
+   [Upstream Fragility](../architecture/upstream_fragility.md).
 
-The two commits `d60d293448d` and `5608e75d78e` are **not** the
-per-panel delegate resolution that `docs_ui/punch_list.md` item 9 asked
-for. A code trace on 2026-09-12 settled this.
+## Caveats
 
-They narrowed the *scope* of the context override. The override now wraps
-each panel callback, instead of the whole layout pass. The *resolution*
-did not change. `space_addon.cc:571-583` still builds one
-`PanelDrawContextOverride` per layout pass, from the single
-`ScrArea::context_delegate_spacetype` field.
+Neither reports an error. Both pass a build and a rebase.
 
-The ucupaint mixed-editor gap stays open. See
-[operations/todo.md](../operations/todo.md) item 13 for the evidence and
-the three parts a real fix needs, and
-[architecture/context_delegation.md](../architecture/context_delegation.md#single-delegate-per-area-not-per-panel)
-for the design note.
+| Change | What goes wrong |
+|---|---|
+| `SPACE_ADDON = 25`, `SPACE_TYPE_NUM` rebased onto it | Upstream takes slot 25. Git reports no conflict. A saved file opens as the wrong editor |
+| `BLENDER_FILE_SUBVERSION` raised from 10 to 12 | Upstream reuses 11 and 12. A stock build skips its own versioning on a file this fork saved |
 
-The commits deliver part of what item 8 asked for. Panel callbacks now run
-under an overridden context, in the same
-`CTX_wm_area_set`/`CTX_wm_region_set` shape that
-`addon_main_region_layout` already used.
+[Upstream Fragility](../architecture/upstream_fragility.md) gives the check
+for each.
 
-Neither commit message mentions the modal-operator warning wrapper or
-the `uiBlock`/`uiBut` rebind walk. Therefore, the modal-operator handling
-in [operations/todo.md](../operations/todo.md) items 10 to 12 remains not
-built.
+## What is open
 
-## What is next
+29 tasks in [todo.md](../operations/todo.md) and 2 defects in
+[bugfix.md](../operations/bugfix.md).
 
-In priority order, from [operations/todo.md](../operations/todo.md):
+Three of them first:
 
-1. Confirm the scope of the two recent context-delegation commits against
-   punch-list items 8 and 9, and close out whichever parts they cover.
-2. Multi-window delegation: widen `addon_delegate_spacetype_find()` to
-   search every window's screen, following the
-   `CTX_wm_window_set`/`_screen_set`/`_area_set`/`_region_set` order
-   established in `bpy_rna_context_temp_override_enter`.
-3. Modal-operator handling: the warning wrapper and the `uiBlock`/`uiBut`
-   rebind walk, or the `temp_override`-based real fix, whichever is
-   chosen.
-4. Small cleanups: the shared panel-scan helper, the shared
-   `"ADDON_PT_empty_state"` constant, and the shared `panel_poll` guard
-   (`operations/todo.md` section 1).
-5. Per-panel hosting design (`operations/todo.md` section 4), which
-   absorbs the earlier per-area slot design.
-6. The hosting-detection API and its author-facing documentation
-   (`operations/todo.md` sections 5 and 6).
+- **Per-panel context delegation is not built.** The delegate is one value
+  for the whole area. An add-on that registers panels for two editor types
+  gets one delegate. The panel that does not match reads context from the
+  wrong editor. A code trace settled this. `todo.md` item 13 holds the
+  evidence and the three parts a fix needs.
+- **Three dead symbols stay in the tree**: `active_addon_editor_index`,
+  `addon_editor_max_visible`, and `CTX_wm_space_addon()`. Items 28 to 30.
+  Delete them in one commit after the next rebase. That keeps the conflict
+  surface small.
+- **The subversion 11 to 12 versioning block is untested.** No file saved
+  before the sidebar existed has gone through it.
 
-## Test status
+## What holds the documentation to the code
 
-No automated tests exist. Three manual scripts exist under `docs_ui/`
-(`test_addon_editor.py`, `test_addon_editor_delegate.py`,
-`test_addon_editor_demo.py`). This review executed none of them. See
-[operations/testing.md](../operations/testing.md) for what each covers
-and which `ui_simulate` tests to write first.
+Three checks. Each exits 1 when work remains.
 
-## Publishing notes
+| Command | Checks |
+|---|---|
+| `python docs_wiki/tools/validate_okf.py` | Every concept file carries OKF frontmatter |
+| `python docs_wiki/tools/check_references.py` | No document names a symbol or a line that does not exist |
+| `tools/oft/trace.sh` | Five documented concepts match the code that claims them |
 
-Not a code task, but recorded for whoever handles distribution.
-The GPL permits publishing this fork with binaries.
+A pre-commit hook runs the trace. `check_facts.py` compares a document
+against its committed version, so a rewrite does not lose a fact.
 
-The distributor must rename the project away from "Blender" for trademark reasons.
-They must ship third-party license notices alongside the binary.
-The distributor must publish the fork on top of an unmodified upstream commit with `origin` kept pointed at `projects.blender.org/blender/blender`.
-Full reasoning, including the minimal "overlay" distribution analysis, is in `docs_ui/legacy/code_review.md` §4.
+## What is not in the repository
+
+`.gitignore` excludes these. They stay on disk here and do not reach a
+clone:
+
+- `docs_wiki/research/` holds legacy studies and internal memos.
+- `docs_ui/`, `docs_cad/`, `docs_sky/`, and
+  `docs_experimentalfeatures_new/` hold the working notes this knowledge
+  base was built from. The three manual test scripts named in
+  [testing.md](../operations/testing.md) are among them.
+
+## Before an upstream patch
+
+Remove the traceability tags. They are not idiomatic Blender:
+
+```
+python tools/oft/strip_tags.py
+```
+
+## Related
+
+- [Fork Mergeability](../architecture/fork_mergeability.md)
+- [Traceability](../reference/traceability.md)
+- [Archive](./archive/index.md)

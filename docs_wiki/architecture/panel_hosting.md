@@ -130,7 +130,7 @@ of this, the main region states which reason applies, instead of
 rendering blank. See
 [UX: Empty State and Header](../design/ux_empty_state_and_header.md).
 
-## Panel `poll()` is the real compatibility limit
+## Panel `poll()` compatibility limits
 
 Confirmed against the bundled Node Wrangler add-on, whose panel
 inherits:
@@ -141,10 +141,10 @@ return (space.type == 'NODE_EDITOR' and space.node_tree is not None ...)
 
 The panel is collected correctly but polls `False`, so the editor draws
 empty. Panels with no space-specific `poll()` draw correctly, including
-sub-panels and screen-level context such as `context.object`. This is
-why [Context Delegation](./context_delegation.md) exists. It also had to
-be built before the picker shipped: shipping the picker first would let
-users select add-ons that then render nothing.
+sub-panels and screen-level context such as `context.object`. Context
+delegation resolves these dependencies (see
+[Context Delegation](./context_delegation.md)). Without delegation,
+panels with space-specific `poll()` checks fail to draw.
 
 ## Mixed-editor add-ons and per-panel context
 

@@ -8,13 +8,13 @@ last_updated: 2026-09-12
 
 # Context Delegation
 
-## Why re-hosting mostly works without changes
+## Screen-level context resolution
 
 The Add-on Editor re-hosts an add-on's existing, unmodified `Panel`
 classes. Those panels declare `bl_space_type = 'VIEW_3D'` (or another
-type) and read that editor's context. In practice most panels still
-work, because Blender resolves `context.X` in layers: screen, then area,
-then region.
+type) and read that editor's context. Most panels resolve
+without changes because Blender evaluates `context.X` in layers:
+screen, area, and region.
 
 The screen layer resolves most of what a typical N-panel reads. This
 layer, in `screen_context.cc`, is editor-agnostic and works in any area:
@@ -24,10 +24,10 @@ layer, in `screen_context.cc`, is editor-agnostic and works in any area:
 `active_bone`, `active_pose_bone`, `selected_bones`, `annotation_data`,
 `grease_pencil_data`, `active_operator`, and more.
 
-An add-on panel that does `context.object.name` or
-`context.scene.my_props` works in the Add-on Editor with zero changes.
+An add-on panel that reads `context.object.name` or
+`context.scene.my_props` works in the Add-on Editor without changes.
 
-## What breaks, and the auto-wiring fix
+## Editor-specific context lookup failures
 
 Only editor-specific lookups fail:
 
@@ -35,7 +35,7 @@ Only editor-specific lookups fail:
 |:---|:---|
 | `context.space_data` | Returns `SpaceAddon`; `.overlay`, `.shading`, `.region_3d` fail |
 | `context.region_data` | No `RegionView3D` available |
-| `poll()` checking `context.space_data.type == 'VIEW_3D'` | Returns `False`, panel silently vanishes |
+| `poll()` checking `context.space_data.type == 'VIEW_3D'` | Returns `False`, the panel does not draw |
 | `bpy.ops.view3d.*` buttons | Operator poll fails, button greys out |
 
 **Fix — context delegation.** The editor resolves a real editor of the
@@ -49,13 +49,12 @@ panel's declared type elsewhere in the screen, in this order:
 
 If no matching editor exists anywhere in the workspace, affected panels
 render a "requires a [editor type]" placeholder instead of crashing or
-vanishing silently. See
+not drawing. See
 [UX: Empty State and Header](../design/ux_empty_state_and_header.md).
 
-## Three widening stages
+## Delegation scope iterations
 
-The delegation mechanism went through three stages. Each stage proved
-insufficient before the next.
+Three delegation scopes were evaluated:
 
 ### 1. Layout-scoped (rejected)
 
@@ -108,17 +107,16 @@ Resolution order and fallback semantics stay unchanged: current area
 unless it declares a delegate, resolve by type via
 `BKE_screen_find_big_area`, fall back to the area itself if nothing
 matches. Only the field's owner and the accessor's knowledge of who uses
-it changed. See [Fork Mergeability](./fork_mergeability.md) for why this
-refactor mattered for rebase risk.
+it changed. See [Fork Mergeability](./fork_mergeability.md) for the
+rebase risk analysis of this refactor.
 
 `ED_area_newspace()` in `editors/screen/area.cc` resets
 `context_delegate_spacetype` to `SPACE_EMPTY` whenever an area's type
 changes, for any area. Without this reset, switching an area away from
 the Add-on Editor to, for example, a Node Editor left the stale delegate
 type in place. Context lookups for the new Node Editor area then
-silently redirected to an unrelated area of the old delegate type, a
-real crash that was fixed generically, not with Add-on-Editor-specific
-code.
+redirected to an unrelated area of the old delegate type. A generic
+reset resolved this issue without Add-on-Editor-specific code.
 
 ## `context.space_data` always resolves through the delegate
 
@@ -210,9 +208,9 @@ everything from raw window-space mouse deltas plus direct bmesh edits,
 so which region the click landed in is irrelevant to its correctness.
 It works when hosted. A detection rule based on
 `wmOperatorType::modal != nullptr` alone would flag DreamUV alongside
-Transform, even though only Transform actually breaks. The real
-distinguishing signal, whether the operator's `invoke()`/`modal()` body
-reads region or view-space state, is not detectable statically.
+Transform, even though only Transform actually breaks. Whether the
+operator's `invoke()`/`modal()` body reads region or view-space state
+cannot be detected statically.
 
 **Deferred, not solved.** If revisited, the fix scopes the region swap
 to operator invocation specifically: a post-layout walk of the region's
@@ -260,10 +258,10 @@ not only on a cache miss, and folds the resolved value into the
 cache-invalidation check.
 
 **Honoring an explicit choice strictly.** The first version fell back to
-the automatic scan whenever the preferred type was not open, silently
+the automatic scan whenever the preferred type was not open,
 substituting a different declared type's panels. This made "the editor
 you picked is not open" practically unreachable, and let an explicit
-choice be silently overridden. The fix now honors the preference
+choice be overridden with no notice. The fix now honors the preference
 strictly: not open means the resolved delegate is `SPACE_EMPTY`, full
 stop, with no substitution. `ADDON_PT_empty_state` names that one editor
 specifically in this case, instead of the generic "one of the
@@ -301,7 +299,7 @@ The Properties editor builds its context path from
 here borrows the whole editor, including its tab state, so a panel
 needing `mesh` draws nothing while the real Properties editor sits on a
 different tab. This case is deliberately not worked around: forcing
-`mainb` during layout would silently change what another visible editor
+`mainb` during layout would change what another visible editor
 shows.
 
 This limitation does not affect panel collection: panels are collected

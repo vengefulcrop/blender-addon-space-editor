@@ -1,8 +1,8 @@
 # Handoffs
 
-The current state of the `pyareas/addon-space-editor` branch, for the next
-agent or developer session.
+The state of the `pyareas/addon-space-editor` branch, for the next developer
+or agent session.
 
-- [Handoff](./handoff.md) — What works, what is in progress, and what is
-  next.
-- [Archive](./archive/index.md) — Past handoffs.
+- [Handoff](./handoff.md) — What the feature does, what to do first in a
+  fresh clone, the caveats, and what is open.
+- [Archive](./archive/index.md) — Superseded handoffs, kept as a record.

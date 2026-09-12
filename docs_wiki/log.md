@@ -206,3 +206,42 @@ pyareas OKF knowledge base.
   - Added `tools/oft/bump.py`. It raises a concept version in two steps. The
     first raises the wiki and names every code site still claiming the old
     version. The second raises those tags, after review.
+
+- **2026-09-12** (Agent: Claude Opus 5):
+  - Rewrote [handoff.md](./handoffs/handoff.md) for a third-party reader. The
+    old one cited files under `docs_ui/`, which a clone does not carry.
+  - Archived the old one as
+    [handoff_2026-09-12_pre-distribution.md](./handoffs/archive/handoff_2026-09-12_pre-distribution.md),
+    and corrected its relative links for the deeper folder.
+  - Fixed mojibake in `handoffs/index.md`, where two em-dashes were stored in
+    the wrong encoding.
+
+- **2026-09-12** (Agent: Claude Opus 5):
+  - Extended rule 3 of `CLAUDE.md` with a rationed word list. "silent" is
+    allowed once per document. "quiet", "hazard", "subtle", and
+    "catastrophic" are not allowed at all. A heading carries no adjective.
+  - Added [tools/check_register.py](./tools/check_register.py). The style
+    linter scores sentence shape and says nothing about register, so a
+    document can score well and still read as overwritten.
+  - Cleared 16 instances across 7 files, and renamed two headings.
+
+- **2026-09-12** (Agent: Claude Opus 5):
+  - Corrected the distribution claim in
+    [fork_mergeability.md](./architecture/fork_mergeability.md),
+    [addon_space_type.md](./architecture/addon_space_type.md), and
+    [building.md](./reference/building.md). They said the fork publishes a
+    diff produced with `git format-patch`. The fork ships as a git branch,
+    and a second developer fetches and rebases it.
+- **2026-09-12** (Agent: Antigravity):
+  - Sharpened rule 3 in `CLAUDE.md` and `GEMINI.md` to forbid narrative framing,
+    code history storytelling, editorial headings, and conversational devices.
+  - Rewrote headings and novelistic prose across `architecture/fork_mergeability.md`,
+    `architecture/context_delegation.md`, `architecture/panel_hosting.md`,
+    `architecture/multiwindow_context_search.md`, `architecture/sidebar_tree_view.md`,
+    `operations/testing.md`, and `reference/upstream_base.md` into dry, factual STE.
+  - Added [tools/register_wordlist.md](./tools/register_wordlist.md) cataloging
+    banned register patterns, narrative devices, and colloquialisms.
+  - Added "why", "how", "matters", and "yourself" to `HEADING_WORDS` in
+    `tools/check_register.py`, and linked the wordlist in `index.md`.
+
+

@@ -67,7 +67,7 @@ The `--no-blender` flag skips the source-repo pull. It does not rebase or
 fast-forward your working branch. It still fetches the libraries, which is
 the only part that matters.
 
-Expect about 6.5 GB of download and a long silent
+Expect about 6.5 GB of download and a long
 stretch during `git lfs pull`. That step produces no incremental output and
 looks frozen when it works normally.
 
@@ -311,11 +311,15 @@ executable.
 ## Fork workflow
 
 Work happens on `pyareas/addon-space-editor`, branched from `main` at
-`027ef661`. Never commit to `main`, so that upstream rebases stay clean and
-developers produce the publishable diff with this command:
+`027ef661`. Never commit to `main`, so upstream rebases stay clean.
+
+The branch itself is what ships. A second developer adds this repository as
+a remote and rebases the commits onto their own base:
 
 ```powershell
-git format-patch main..pyareas/addon-space-editor
+git remote add pyareas <url>
+git fetch pyareas
+git rebase --onto <their-base> 027ef661 pyareas/addon-space-editor
 ```
 
 Build a clean baseline from unmodified `main` before you make changes, so

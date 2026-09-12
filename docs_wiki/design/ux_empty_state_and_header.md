@@ -133,7 +133,7 @@ True horizontal columns requires forking that layout function's
 internals or reimplementing panel headers, collapse state, and drag
 interaction independently. This work represents a larger task than everything else in
 this plan combined, and its maintenance cost conflicts with staying
-a rebasable patch series.
+a rebasable commit series.
 
 **Cheaper adjacent option**: the category-tab system already active in
 this editor (inherited from `ED_region_panels_layout_ex`, the

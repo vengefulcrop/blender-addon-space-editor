@@ -10,10 +10,15 @@ last_updated: 2026-09-12
 
 ## Distribution goal
 
-The fork publishes its diff so a user can compile a personal build. This
-sets a constraint on the design. The diff must stay a small, reviewable,
-rebasable patch series against upstream `main`. It must not become a
-sprawling refactor.
+The fork ships as a git branch on top of upstream `main`, not as a patch
+file. A second developer adds this repository as a remote, fetches the
+branch, and rebases the commits onto their own base. Git carries the
+history, the base commit, and the ability to rebase, which a patch file
+throws away.
+
+This sets a constraint on the design. The commit series must stay small,
+reviewable, and rebasable against upstream `main`. It must not become a
+large refactor.
 
 ## File-level touches, as of the point this was last measured
 
@@ -29,26 +34,21 @@ total. They can never conflict with upstream changes.
 | `blenkernel/BKE_blender_version.h`, `blenloader/intern/versioning_530.cc` | `BLENDER_FILE_SUBVERSION` raised from 10 to 12 | **High on the meaning.** The `#define` conflicts loudly, but the two versioning blocks do not. A shared subversion number makes a stock build skip its own versioning. See [Upstream Fragility](./upstream_fragility.md). |
 | `makesdna/DNA_screen_types.h` | One `short` field on `ScrArea`, replacing 2 bytes of existing padding, no struct size change | Low. The field adds code and names no specific editor. |
 | `makesdna/DNA_space_types.h` | One more `short` field on `SpaceAddon` (`preferred_delegate_spacetype`), same padding-reuse pattern | Low. This field only adds to the fork's own struct. |
-| `editors/screen/area.cc` | One line in `ED_area_newspace()` resetting `ScrArea::context_delegate_spacetype` on any area-type change | Low. This is a single, generic reset, not specific to this editor, in a function upstream touches occasionally. It fixes a real crash, so it is worth defending as a correctness fix regardless of rebase cost. |
+| `editors/screen/area.cc` | One line in `ED_area_newspace()` resetting `ScrArea::context_delegate_spacetype` on any area-type change | Low. Generic reset that prevents stale-delegate crashes on area type switches. |
 | `makesrna/intern/rna_space.cc`, `rna_screen.cc`, `spacetypes.cc` | Additive entries in existing lists and switches. Two new plain enum properties (`Area.context_delegate_spacetype`, `SpaceAddon.preferred_delegate_spacetype`), no custom itemf | Low. These are insertions, not edits to existing lines. |
 | `anim_filter.cc`, `grease_pencil_convert_legacy.cc`, `resources.cc` | One `case` label added to an exhaustive switch each | Near zero. |
 | `makesdna/DNA_userdef_types.h`, `rna_userdef.cc` | New struct and field, additive | Low, with one caveat: DNA requires 8-byte alignment for pointer-containing members file-wide, so an inserted field needs correct padding. |
 
-**Net assessment**: this stays a rebasable patch series. It does not
+**Net assessment**: this stays a rebasable commit series. It does not
 diverge from upstream structurally. Nothing overrides upstream behavior
 for any area type other than `SPACE_ADDON`. Every other space type's code
 path stays byte-for-byte what it was.
 
-## Why the generic-context refactor mattered
+## Generic context refactor
 
-`context.cc` was the one file with real ongoing maintenance cost and a
-design objection: it once branched directly on
-`area->spacetype != SPACE_ADDON`. The fix made
-`ScrArea::context_delegate_spacetype` a generic field with no spacetype
-check in the accessor (see
-[Context Delegation](./context_delegation.md#made-generic-no-core-code-names-this-editor)).
-After this fix the design objection is gone, since no kernel code names
-this editor. What remains is an ordinary, low-risk rebase surface.
+Earlier revisions of `context.cc` branched on `area->spacetype != SPACE_ADDON`. This check caused merge conflicts and violated upstream kernel design.
+
+`ScrArea::context_delegate_spacetype` replaced the branch with a generic field. Its accessor contains no space-type check (see [Context Delegation](./context_delegation.md#made-generic-no-core-code-names-this-editor)). Because no kernel code references the add-on editor, `context.cc` remains a low-risk rebase surface.
 
 ## Estimated LOC, compared to the superseded design
 
@@ -72,8 +72,9 @@ for why the estimate shrank.
 
 ## Repository conventions
 
-- Work happens on a dedicated branch off `main`. The publishable diff is
-  `git format-patch main..<branch>`.
+- Work happens on a dedicated branch off `main`. That branch is what
+  ships. See [Upstream Base and Version](../reference/upstream_base.md)
+  for the base commit a second developer rebases onto.
 - Nobody commits to `main`, so upstream rebases stay clean.
 - Building requires `make update` first, to fetch precompiled libraries
   into `lib/`.

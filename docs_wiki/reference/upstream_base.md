@@ -42,10 +42,10 @@ The branch is therefore untested against current upstream. The two
 caveats in [Upstream Fragility](../architecture/upstream_fragility.md)
 get worse as the gap grows.
 
-## How to measure the gap yourself
+## Upstream gap measurement procedure
 
-Run these in order. They report the current state, not the state written
-above.
+Execute these commands in sequence to evaluate the current gap against
+upstream:
 
 1. Fetch upstream:
    ```
@@ -66,7 +66,7 @@ above.
    ```
    A value of 12 or higher means the fork number collides. Renumber the
    fork block above it.
-5. Read the upstream space type enum, to check the other hazard:
+5. Read the upstream space type enum, to check the other caveat:
    ```
    git show origin/main:source/blender/makesdna/DNA_space_enums.h | grep -E "SPACE_|SPACE_TYPE_NUM"
    ```

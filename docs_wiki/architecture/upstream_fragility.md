@@ -8,7 +8,7 @@ last_updated: 2026-09-12
 
 # Upstream Fragility
 
-This fork is a rebasable patch series. See
+This fork is a rebasable commit series. See
 [Fork Mergeability](./fork_mergeability.md) for the full file-level risk
 table.
 
@@ -33,14 +33,13 @@ and rebases `SPACE_TYPE_NUM` onto it:
 `wm_dragdrop.cc` and `wm_toolsystem.cc`. The value also goes into a `.blend`
 as `ScrArea::spacetype`.
 
-**How it fails silently.** Upstream adds its own space type. Upstream also
-takes 25. Git reports no conflict, because the two sides edit different
+**What goes wrong.** Upstream adds its own space type and also takes 25. Git reports no conflict, because the two sides edit different
 lines of the same enum. The build succeeds. Then:
 
 - A fork-saved `.blend` reports space type 25. A newer build reads 25 as the
   upstream space type. The area changes into the wrong editor.
 - Both enumerators exist with the same value. A `switch` on the space type
-  gets a duplicate case, or it silently selects the wrong branch.
+  gets a duplicate case, or it selects the wrong branch with no warning.
 
 **What to check on a rebase.** Read `DNA_space_enums.h` after the rebase.
 Confirm that `SPACE_ADDON` holds a value no other enumerator holds. Renumber
@@ -67,16 +66,16 @@ refusal in `readfile.cc` tests `minversion` and `minsubversion`, not the
 subversion. The fork does not touch `BLENDER_FILE_MIN_VERSION` (405) or
 `BLENDER_FILE_MIN_SUBVERSION` (85). So the refusal never fires.
 
-**How it fails silently.** Upstream raises its own subversion to 11 and to
+**What goes wrong.** Upstream raises its own subversion to 11 and to
 12, for its own changes. Then two different meanings share one number:
 
-- Git reports a conflict on the `#define` line, which is loud and easy.
+- Git reports a conflict on the `#define` line. That one is easy.
 - Git reports **no** conflict between the two `versioning_530.cc` blocks,
   because they sit at different places in the file. Both then run against
   the same subversion number.
 - A `.blend` saved by this fork claims 503.12. A stock build at 503.12 skips
   its own 11 and 12 versioning, because the file already claims to hold it.
-  The upstream data change never runs. This is the quiet data fault.
+  The upstream data change never runs. Nothing reports an error.
 
 **What to check on a rebase.** Compare `BLENDER_FILE_SUBVERSION` in the
 upstream base against the fork value. Move the fork versioning block to a

@@ -15,7 +15,7 @@ works, why one tier fits this feature and the other does not, which
 manual scripts exist today, and which automated tests are worth writing
 first.
 
-## 1. How Blender tests things
+## 1. Upstream test architecture
 
 Blender uses two separate, deliberately different tiers.
 
@@ -137,7 +137,7 @@ existing `ADDON` area or converts the largest suitable one, then sets
 `area.spaces.active.addon_id = "addon_editor_demo"`. Expected result: two
 top-level panels and one sub-panel drawn.
 
-## 3. Tests worth writing, ranked
+## 3. Tests to write, ranked
 
 None of these exist yet.
 
@@ -147,7 +147,7 @@ None of these exist yet.
    in the new window under a `temp_override`, asserting no
    `ADDON_*`-prefixed entries appear, paired with the same check against
    the main window asserting they do appear. Cheapest to write, and
-   guards [bugfix.md](./bugfix.md) item 10 against silent
+   guards [bugfix.md](./bugfix.md) item 10 against
    reintroduction.
 2. **Empty-state crash regression** (`ui_simulate`, modeled on
    `test_search_in_editors.py`). Load a fixture with an Add-on Editor
@@ -173,7 +173,7 @@ None of these exist yet.
    `editors/space_addon`. Worth the cost only if this feature keeps
    growing.
 
-## 4. Why this matters
+## 4. Test coverage rationale
 
 Every verification recorded in the implementation log behind
 `docs_ui/legacy/code_review.md` is manual: confirmed against the bundled
@@ -189,5 +189,5 @@ them before a live reproduction did.
 
 Closing items 1 and 2 above would
 directly guard the two bugs fixed in the same session,
-[bugfix.md](./bugfix.md) items 9 and 10, against silent reintroduction.
+[bugfix.md](./bugfix.md) items 9 and 10, against regression.
 

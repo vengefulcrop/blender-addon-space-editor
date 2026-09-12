@@ -246,7 +246,23 @@ When you add or update knowledge:
    `asd-ste100` skill when you write or edit documentation. Apply Simplified
    Technical English to keep the prose short and exact.
 
-   **Register, on top of STE.** Cut ornate wording to a minimum.
+   **Register, on top of STE.** Cut ornate and narrative wording to a minimum.
+   - **No narrative or novelistic framing.** Do not tell an evolutionary story
+     or dramatize code history. Ban story phrasing and narrative resolution
+     ("was the one file with real ongoing cost", "the fix made", "the objection
+     is gone", "what remains is"). State what earlier code did, what changed,
+     and what the current code does.
+   - **Dry technical register over metric-gaming.** Passing statistical STE
+     checks (sentence length, forbidden word lists) is not sufficient on its own.
+     The prose must read as a dry technical reference, not an essay, magazine
+     article, or developer journal.
+   - **Structural simplicity.** Do not link narrative thoughts with colons,
+     em-dashes, or compound subordinate clauses. Use short, single-idea
+     declarative sentences in active voice.
+   - **Headings carry no editorial framing or adjectives.** Do not use "Why...",
+     "How...", or questions in headings ("Why the generic-context refactor
+     mattered"). Write "Generic context refactor". A heading names the subject
+     and stops.
    - No dramatized nouns. Write "caveats" or "pitfalls", not "silent
      hazards". Write "risk", not "quiet data fault".
    - Prefer the plain word. Use "check", not "interrogate". Use "old", not
@@ -257,6 +273,39 @@ When you add or update knowledge:
      was the opposite.)
    - Ornate is not the same as technical. Keep a precise technical term even
      when it is long. `PanelDrawContextOverride` stays as it is.
+
+   **Words to ration.** Each one is correct in the right place and becomes
+   noise when repeated. Use each at most once per document, and only where
+   it carries a fact the sentence would otherwise lose:
+
+   | Word | Use it for | Do not use it for |
+   |---|---|---|
+   | silent, silently | A failure that emits no error, warning, or conflict | A heading, a summary, or a second mention of a fault already described |
+   | quiet | Nothing. Write "silent" once, or name the fact | Any use |
+   | hazard, peril | Nothing. Write "caveat", "risk", or "pitfall" | Any use |
+   | subtle, insidious | Nothing. State what happens | Any use |
+   | catastrophic, disastrous | Nothing. State the loss | Any use |
+
+   Prefer the fact over the adjective. "Git reports no conflict, and the
+   build succeeds" beats "fails silently", because it says what a reader
+   would see.
+
+   **Headings carry no adjectives.** Write "Caveats", not "The two caveats
+   that fail silently". Write "What is open", not "What is worth knowing
+   before you start". A heading names the subject and stops.
+
+   Run the register check before you commit a document:
+
+   ```
+   python docs_wiki/tools/check_register.py
+   ```
+
+   **Commit messages are subject to these rules.** A commit message must
+   adhere to the same register, STE, and concision standards. Use the
+   imperative mood ("docs: clarify...", not "docs: clarified..."). Cut
+   narrative storytelling, dramatic framing, and conversational commentary
+   from both the summary line and the commit body. State what was changed
+   and the factual reason for the change.
 
 4. **Provenance.** State plainly that this documentation is largely generated
    by an AI agent, then verified in part by a human. The disclaimer lives at

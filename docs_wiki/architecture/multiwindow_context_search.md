@@ -24,10 +24,10 @@ other upstream call sites of `BKE_screen_find_big_area()` shares the same
 single-screen assumption. The Add-on Editor inherited the limitation
 rather than introducing it.
 
-## Does Blender's own engine already do cross-window area search?
+## Upstream cross-window search implementations
 
-Yes, in two places, neither a generic reusable utility, but both an
-established pattern.
+Two precedents exist in upstream Blender: neither is a generic utility,
+but both establish patterns for window traversal.
 
 ### `find_area_showing_render_result()` — strongest precedent
 
@@ -110,7 +110,7 @@ state from an area in a non-current window.
   single current window/screen/area/region. Any cross-window reasoning
   goes through `CTX_wm_manager(C)->windows` manually.
 
-## What fixing the gap would cost
+## Implementation requirements for cross-window search
 
 1. A new cross-window search helper in `blenkernel/intern/screen.cc`,
    iterating `wm->windows` and each active window screen, picking the
@@ -129,13 +129,12 @@ state from an area in a non-current window.
    [Context Delegation](./context_delegation.md)) exists to prevent — both
    sides have to move together.
 
-4. **The real risk**: once the delegate can resolve to an area in a
-   different `wmWindow`, `CTX_wm_area_set`/`CTX_wm_region_set` would set
-   the area/region of bContext to something that no longer belongs to
-   `CTX_wm_window(C)`. No accessor in the 18-strong chain through
-   `ctx_wm_area_effective()` audited against that mismatch, because that
-   condition was never possible before. This needs a deliberate audit, not
-   an assumption that it is fine.
+4. **Window mismatch risk**: if the delegate resolves to an area in a
+   different `wmWindow`, `CTX_wm_area_set`/`CTX_wm_region_set` sets
+   the area/region of bContext to an area outside `CTX_wm_window(C)`.
+   The 18 accessors routing through `ctx_wm_area_effective()` do not
+   validate this condition. An explicit audit is required before enabling
+   cross-window resolution.
 
 **Not started.** Recorded as a deliberate future item, estimated at
 roughly half a day to a day once the cache-signature widening, Python

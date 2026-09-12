@@ -25,9 +25,9 @@ the editor-type dropdown does, but the tree makes it browsable. Bookmarks
 are scoped to a specific panel set of a specific add-on, not to the whole
 add-on, and they persist across sessions.
 
-## What needed a C++ recompile, and what did not
+## C++ and Python implementation boundary
 
-### Needed C++, one time
+### C++ requirements
 
 - **The sidebar region**: a new, left-aligned `ARegionType`
   (`RGN_ALIGN_LEFT`), registered in `space_addon.cc` the same way as the
@@ -39,7 +39,7 @@ add-on, and they persist across sessions.
   the natural shape. This needed a new DNA struct, RNA registration, and
   a versioning bump.
 
-### Pure Python once that scaffolding exists
+### Python components
 
 - The two panels themselves (`Panel` subclasses on the new region type,
   the same shape as `ADDON_PT_empty_state`).
@@ -48,7 +48,7 @@ add-on, and they persist across sessions.
 - The bookmark toggle UI (a star/pin icon per row), once the underlying
   storage property exists.
 
-## The Addons tree: `AbstractTreeView`, not a hand-rolled flat list
+## Addons tree view implementation
 
 `arch~sidebar-tree~1`
 
@@ -56,7 +56,7 @@ Needs: impl
 
 Blender has a mature, precedented C++ tree-view widget,
 `AbstractTreeView` / `AbstractTreeViewItem` (`UI_tree_view.hh`), with 15
-real call sites in the tree. These include `asset_catalog_tree_view.cc`,
+call sites in the tree. These include `asset_catalog_tree_view.cc`,
 Grease Pencil's layer tree template, bone collections, and node-tree
 interface sockets. `asset_catalog_tree_view.cc` is close to a direct
 analog: a hierarchical, expandable catalog tree in a browser sidebar. It
@@ -64,7 +64,7 @@ is the file the Addons tree clones from. See
 [Native Tree View vs Hand-Rolled Flat List](../decisions/adr_007_native_tree_view_vs_flat_list.md)
 for the full tradeoff.
 
-## What was built (first pass)
+## Initial implementation {#what-was-built-first-pass}
 
 - `bAddonBookmark` DNA plus `UserDef::addon_bookmarks`, RNA
   (`AddonBookmark`, an `addon_bookmarks` collection with `new`/`remove`),
@@ -87,10 +87,10 @@ for the full tradeoff.
 - `ADDON_PT_bookmarks`, `ADDON_OT_bookmark_toggle`,
   `ADDON_OT_bookmark_activate` (Python).
 
-## Three build-order bugs, all presenting as "the sidebar is not there"
+## Build-order defects
 
 1. `/t:blender` builds the executable but does not copy `scripts/` into
-   the runtime tree. Blender ran a 13-day-old `space_addon.py`, so the
+   the runtime tree. Blender ran an outdated `space_addon.py`, so the
    Python panel never registered. The `INSTALL` project
    (`INSTALL.vcxproj`, not `/t:INSTALL` on the solution) syncs scripts.
 2. Region order matters. `region_rect_recursive` carves the area up in
@@ -121,7 +121,7 @@ for the full tradeoff.
   [Context Delegation](./context_delegation.md#context-delegation-narrowed-to-panel-callbacks)).
   This fixed hosted panels not reflowing when one is resized.
 
-## Not built yet
+## Deferred features {#not-built-yet}
 
 - Search/filter in the Bookmarks panel (planned `UIList`
   `filter_items()`). The Addons tree already has search via

@@ -18,9 +18,10 @@ editor. The intended user flow is:
 3. The user picks an add-on. The area switches to it and shows its panels.
 4. The area draws that add-on's panels as a full editor.
 
-The fork publishes its diff so a user can compile a personal build. This
-constrains the design: it must stay a small, reviewable, rebasable patch
-series against upstream `main`, not a large refactor.
+The fork ships as a git branch on top of upstream `main`. A second
+developer fetches the branch and rebases it onto their own base. This
+constrains the design: it must stay a small, reviewable, rebasable commit
+series, not a large refactor.
 
 ## One space type, one menu entry
 
