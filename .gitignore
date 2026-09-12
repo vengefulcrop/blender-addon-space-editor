@@ -95,3 +95,10 @@ blendcache_*
 # The OKF knowledge base in /docs_wiki/ is tracked.
 /docs_*/
 !/docs_wiki/
+
+# Research notes in the knowledge base. They hold legacy studies, unrelated
+# research, and internal memos. They stay on disk and are not distributed.
+/docs_wiki/research/
+
+# One-off task prompts for an agent. They go stale as the work lands.
+/gemini_prompt.md

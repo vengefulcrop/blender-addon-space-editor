@@ -13,7 +13,7 @@ last_updated: 2026-09-12
 Context delegation (see [Context Delegation](./context_delegation.md))
 uses `BKE_screen_find_big_area()`, which searches a single `bScreen`. Each
 `wmWindow` owns its own active screen. `addon_delegate_spacetype_find()`
-calls it via `CTX_wm_screen(C)`, which only returns the current window's
+calls it via `CTX_wm_screen(C)`, which only returns the current window
 screen.
 
 If a user opens a new window and hosts an add-on there that needs, for
@@ -63,11 +63,11 @@ static ScrArea *find_area_showing_render_result(bContext *C, Scene *scene, wmWin
 }
 ```
 
-This is the exact shape of search the Add-on Editor's cross-window
-delegation would need: iterate every `wmWindow`, pull each window's own
-active `bScreen`, walk `areabase` looking for a specific space type
-satisfying an extra predicate, and return both the matching `ScrArea*` and
-the `wmWindow*` it lives in.
+This is the exact shape of search cross-window delegation in the Add-on
+Editor needs: iterate every `wmWindow`, pull the active `bScreen` of each
+window, walk `areabase` looking for a specific space type satisfying an
+extra predicate, and return both the matching `ScrArea*` and the `wmWindow*`
+it lives in.
 
 The caller, `render_view_open()` (`render_view.cc:212-224`), handles the
 second half of the pattern: if the match lives in a different window than
@@ -76,7 +76,7 @@ the one the operator runs in, it raises that window
 
 **Not a generic utility.** It is `static` and hardcoded to `SPACE_IMAGE`
 plus a render-result predicate. It does not compute "biggest" the way
-`BKE_screen_find_big_area` does; it takes the first match per window in
+`BKE_screen_find_big_area` does. It takes the first match per window in
 insertion order, and the first window with a hit. A reusable version for
 the Add-on Editor would need to add size comparison across all candidates.
 
@@ -92,17 +92,19 @@ which manually sets `CTX_wm_window/screen/area/region`.
 This solves "notify every matching area in every window" (broadcast), not
 "find the single best match." There is no size comparison and no "pick
 one." But the manual `bContext` construction is the recipe for the
-"borrowing" half of the Add-on Editor's problem: building a context object
-that borrows state from an area in a non-current window.
+borrowing half of the problem: building a context object that borrows
+state from an area in a non-current window.
 
 ### Weaker or non-matches, for completeness
 
 - `ED_undo_object_editmode_validate_scene_from_windows()`
   (`ed_undo.cc:834-849`) is cross-window but only inspects `win.scene`/
-  `win.view_layer`, never a window's screen or areabase.
+  `win.view_layer`, never a window screen or areabase.
+
 - The XR session code (`wm_xr_session.cc:246-257`) pins a single
   `wmWindow*` at session-start time rather than re-deriving "the right
-  editor" later; it does no area/screen inspection.
+  editor" later. It does no area/screen inspection.
+
 - `bContext` itself has no cross-window accessor: `CTX_wm_window`,
   `CTX_wm_screen`, `CTX_wm_area`, and `CTX_wm_manager` only expose the
   single current window/screen/area/region. Any cross-window reasoning
@@ -111,25 +113,28 @@ that borrows state from an area in a non-current window.
 ## What fixing the gap would cost
 
 1. A new cross-window search helper in `blenkernel/intern/screen.cc`,
-   iterating `wm->windows` and each window's active screen, picking the
+   iterating `wm->windows` and each active window screen, picking the
    biggest match across all of them (roughly 20-30 lines).
    `BKE_screen_find_big_area()` itself should not change signature: 9
    existing upstream callers depend on its current single-screen contract.
+
 2. Two call sites in `addon_delegate_spacetype_find()` to swap over, plus
    `addon_screen_signature_get()` (the cache-invalidation signature), which
    currently only hashes the current screen's open space types.
+
 3. The Python side (`_addon_has_open_delegate()`, header/empty-state
    messaging) checks `{area.type for area in context.screen.areas}`,
    single-screen too. Widening only the C++ side would reproduce the same
    C/Python disagreement the empty-state fix (see
    [Context Delegation](./context_delegation.md)) exists to prevent — both
    sides have to move together.
+
 4. **The real risk**: once the delegate can resolve to an area in a
    different `wmWindow`, `CTX_wm_area_set`/`CTX_wm_region_set` would set
-   the bContext's area/region to something that no longer belongs to
+   the area/region of bContext to something that no longer belongs to
    `CTX_wm_window(C)`. No accessor in the 18-strong chain through
-   `ctx_wm_area_effective()` has been audited against that mismatch, since
-   it has never been possible before. This needs a deliberate audit, not
+   `ctx_wm_area_effective()` audited against that mismatch, because that
+   condition was never possible before. This needs a deliberate audit, not
    an assumption that it is fine.
 
 **Not started.** Recorded as a deliberate future item, estimated at

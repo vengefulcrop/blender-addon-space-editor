@@ -4,69 +4,75 @@ title: "C/C++ Best Practice"
 description: "Practical rules for Blender C/C++ code beyond style: sizeof order, unused arguments, and safe string APIs"
 tags: [c, cpp, best-practice, strings]
 last_updated: 2026-09-12
+source: "handbook_best_practice_c_cpp.md"
+verbatim: true
 ---
+
+<!-- This file is a verbatim copy of an external Blender document.
+     Do not rewrite the prose. The ASD-STE100 and register rules in
+     docs_wiki/CLAUDE.md do not apply here. -->
+
+# Best Practice C/C++
 
 # C/C++ Best Practice
 
-This page is in addition to the [C and C++ style guide](./c_cpp_style.md),
-which covers stylistic aspects of writing code. This page covers other
-topics related to writing code for Blender.
+Note that this page is in addition to the [style
+guide](../c_cpp/) which covers
+stylistic aspects of writing code, this page covers other topics
+relating to writing code for Blender.
 
-## Order of operations for sizeof(..)
+## Order of Operations for "sizeof(..)"
 
-When you calculate the size of a value in bytes, place `sizeof` first. For
-example, write `sizeof(type) * length`. This order avoids integer overflow
-errors, because it promotes the second value to `size_t` when that value is
-a smaller type such as `int`.
+When calculating the size of a value in bytes, order `sizeof` first, eg:
+`sizeof(type) * length`, this avoids integer overflow errors by
+promoting the second value to `size_t` in the case it's a smaller type
+such as an int.
 
-For array allocation, use `MEM_mallocN` or `MEM_callocN` (the array
-variants: `MEM_mallocN` becomes `MEM_mallocarrayN` and `MEM_callocN`
-becomes `MEM_callocarrayN`).
+Note that for array allocation, we have `MEM_`**`m`**`alloc_arrayN` and
+`MEM_`**`c`**`alloc_arrayN`.
 
 ## Comment unused arguments in C++ code
 
-When a C++ function has an unused argument, declare it like
-`int /*my_unused_var*/`. Do not use the `UNUSED()` macro. The macro does not
-work correctly for MSVC. It only prevents the compiler from using the
-variable, but it does not suppress the warning. It also has a more complex
+When a C++ function has an unused argument, prefer declaring it like
+`int /*my_unused_var*/` to using the `UNUSED()` macro. This is because
+the macro does not work properly for MSVC-- it only prevents using the
+variable but does not suppress the warning. It also has a more complex
 implementation.
 
-## Avoid unsafe string C-APIs
+## Avoid Unsafe String C-API's
 
-Blender's internal data structures, for example DNA structs, use fixed size
-char buffers. This makes low level string manipulation necessary.
+Given the current state of Blender's internal data structures (DNA
+structs for example), fixed size char buffers are used making it
+necessary to use low level string manipulation.
 
-Avoid unsafe C-API functions. These functions have caused bugs historically.
-See the [example issue](https://projects.blender.org/blender/blender/issues/108917).
+Unsafe C-API functions should be avoided as these have been a cause of
+bugs historically [(see
+examples)](https://projects.blender.org/blender/blender/issues/108917).
 
-This table lists functions to avoid and the alternatives to use instead.
+This table lists function to avoid and alternatives that should be used
+instead.
 
-| Unsafe C-API | Safe alternative |
+| Unsafe C-API | Safe Alternative |
 | --- | --- |
-| `strcpy`, `strncpy` | `BLI_strncpy`, or the `STRNCPY` macro. |
-| `sprintf`, `snprintf` | `BLI_snprintf`, `BLI_snprintf_rlen`, or the `SNPRINTF`, `SNPRINTF_RLEN` macros. |
-| `vsnprintf`, `vsprintf` | `BLI_vsnprintf`, or the `VSNPRINTF`, `VSNPRINTF_RLEN` macros. |
-| `strcat`, `strncat` | `BLI_strncat`. `BLI_string_join` may also work as an alternative for concatenating strings. |
+| `strcpy`, `strncpy` | `BLI_strncpy`, or `STRNCPY` macro. |
+| `sprintf`, `snprintf` | `BLI_snprintf`, `BLI_snprintf_rlen` or `SNPRINTF`, `SNPRINTF_RLEN` macros. |
+| `vsnprintf`, `vsprintf` | `BLI_vsnprintf`, or `VSNPRINTF`, `VSNPRINTF_RLEN` macros. |
+| `strcat`, `strncat` | `BLI_strncat`. `BLI_string_join` may also be an alternative for concatenating strings. |
 
-Follow these notes about fixed size char buffer use.
+Notes relating to fixed size char buffer use:
 
-- Unless stated otherwise, terminate fixed sized char buffers with a null
-  byte.
-- Queries that rely on null termination are acceptable, such as `strlen`,
-  `strstr`, and related functions.
-- When you construct UTF-8 encoded strings that may not fit the destination
-  buffer, copy the strings with `BLI_strncpy_utf8`, or use
-  `BLI_str_utf8_invalid_strip` on the resulting string.
-- When you perform low level operations on byte arrays, calculate sizes and
-  use `memcpy` to construct the buffer.
-- When you construct fixed size char buffers with complex logic, assert
-  that the final size fits within the buffer size.
+- Unless otherwise stated fixed sized char buffers must be null terminated.
+
+- Queries that rely on null termination are acceptable such as `strlen`, `strstr` and related functions.
+
+- When constructing UTF-8 encoded strings which may not fit destination buffer, copy the strings with `BLI_strncpy_utf8`, or use `BLI_str_utf8_invalid_strip` on the resulting string.
+
+- When performing low level operations on byte arrays, it's preferable to calculate sizes and use `memcpy` to construct the buffer.
+
+- Complex logic to construct fixed size char buffers should assert the final size fits within buffer size.
 
 ### Exceptions
 
-- Libraries in `extern/` are not maintained as part of Blender's code base.
-  This policy does not apply there.
-- The `StringPropertyRNA::get` callbacks, defined in `rna_*.cc`, use
-  `strcpy`, because the string must be large enough to hold a string length
-  defined by `StringPropertyRNA::length`.
-</content>
+- Libraries in `extern/` are not maintained as part of Blender's code, this policy doesn't apply there.
+
+- `StringPropertyRNA::get` callbacks (defined in `rna_*.cc`) uses `strcpy` as the string must be large enough to hold a string length defined by `StringPropertyRNA::length`.

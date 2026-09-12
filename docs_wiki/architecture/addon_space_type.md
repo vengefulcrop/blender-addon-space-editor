@@ -10,8 +10,8 @@ last_updated: 2026-09-12
 
 ## Goal
 
-The Add-on Editor lets a user turn any enabled add-on or extension into a
-first-class editor. The intended user flow is:
+The Add-on Editor lets a user turn any enabled add-on or extension into an
+editor. The intended user flow is:
 
 1. The user clicks the editor-type button in an area header.
 2. The editor-type list has an "Add-ons" heading and curated entries.
@@ -35,14 +35,14 @@ void (*space_subtype_item_extend)(bContext *C, EnumPropertyItem **item, int *tot
 ```
 
 `rna_Area_ui_type_itemf` folds subtypes into the editor dropdown, at
-`rna_screen.cc:216-233`. The enum value is packed as
+`rna_screen.cc:216-233`. The code packs the enum value as
 `space_type << 16 | subtype`. This is the same mechanism the Node Editor
 uses to present Shader, Compositor, and Geometry Nodes as three separate
 dropdown entries while being one registered space type.
 
-No `SpaceType` is created or destroyed at runtime, and there is no dynamic
-registration, no runtime `SpaceType` allocation, and no unregister-crash
-risk from a torn-down space type. See
+The system creates or destroys no `SpaceType` at runtime, and there is no
+dynamic registration, no runtime `SpaceType` allocation, and no
+unregister-crash risk from a torn-down space type. See
 [Add-on Space Type vs Dynamic Registration](../decisions/adr_001_addon_space_type_vs_dynamic_registration.md)
 for the rejected alternative.
 
@@ -106,25 +106,25 @@ value (see above). Two sentinel values matter for this packing:
 - `ScrArea::butspacetype_subtype == -1` is Blender's own reserved value
   meaning "not yet determined, call `space_subtype_get()`"
   (`area.cc:2952`). The "Add an Add-on..." entry must not reuse `-1`: it
-  would never reach the `set` callback, and its bit pattern is unchanged by
-  the packing, which would decode back to an invalid space type.
+  would never reach the `set` callback, and the packing leaves its bit
+  pattern unchanged, which would decode back to an invalid space type.
 - The fork uses `0x7FFF` — the maximum value the `short` subtype field can
   hold — for the "Add an Add-on..." entry (`ADDON_SUBTYPE_PICK`), verified
   against both the packing and unpacking code.
-- `addon_space_subtype_get()`'s fallback (nothing selected, or the selected
-  entry was filtered out) also returns `ADDON_SUBTYPE_PICK` rather than
-  `0`. Returning `0` collided with the "Add-ons" heading item, which also
-  decodes to value `0` after the `SPACE_ADDON << 16` OR, and produced a
-  blank area-type button icon. `ADDON_SUBTYPE_PICK` has a real icon
-  (`ICON_ADD`) and is collision-free.
+- `addon_space_subtype_get()`'s fallback (nothing selected, or the
+  filtering rules remove the selected entry) also returns
+  `ADDON_SUBTYPE_PICK` rather than `0`. Returning `0` collided with the
+  "Add-ons" heading item, which also decodes to value `0` after the
+  `SPACE_ADDON << 16` OR, and produced a blank area-type button icon.
+  `ADDON_SUBTYPE_PICK` has a real icon (`ICON_ADD`) and is collision-free.
 
 ## Extension module identity
 
 `BPY_class_module_name_get` originally kept only the first dot-segment of
 `__module__`. Extensions (Blender's package system) import as
 `bl_ext.<repository>.<addon>...`, so every extension-installed add-on
-collapsed to the identity `"bl_ext"`, then was filtered out by the `bl_`
-prefix exclusion, hiding every extension add-on from the picker. Fixed to
+collapsed to the identity `"bl_ext"`. The `bl_` prefix exclusion then
+filtered it out, hiding every extension add-on from the picker. Fixed to
 keep three segments specifically for that prefix.
 
 ## Curated list, not an auto-derived list

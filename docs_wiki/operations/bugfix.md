@@ -10,12 +10,12 @@ last_updated: 2026-09-12
 
 Consolidated from `docs_ui/legacy/code_review.md` (reviewed 2026-08-01
 against `main` @ `027ef661`) and `docs_ui/addon_space_editor_testing.md`.
-An item is marked FIXED when the source or the git log shows the fix
+The document marks an item FIXED when the source or the git log shows the fix
 landed. See [todo.md](./todo.md) for open enhancement work, not defects.
 
 ## 1. `U.addon_editors` was never saved or loaded — FIXED
 
-**Symptom.** A new `ListBase` was added to `UserDef` with no
+**Symptom.** The developer added a new `ListBase` to `UserDef` with no
 corresponding blenloader support. `writefile.cc:1301` writes
 `userdef->addons` but nothing wrote `addon_editors`. `readfile.cc:4079-4088`
 has a `BLO_read_struct_list` call for every other `UserDef` list, but none
@@ -64,14 +64,15 @@ enabled, which was not available.
 **Symptom.** `_addon_top_level_panel_space_types` used
 `bpy.types.Panel.__subclasses__()`, which is direct-only and unfiltered.
 
-**Suspected cause, confirmed.** Unregistered base classes were counted.
-Ten classes in the tree are `Panel` subclasses that are never registered,
-usually an add-on's own panel base. All ten are direct subclasses, so the
-original code counted them. Concretely, ucupaint's unregistered
-`Y_PT_UDIM_Atlas_menu` made the add-on report `IMAGE_EDITOR`, which no
-registered ucupaint panel declares. Indirect subclasses were also missed:
-an add-on deriving its panels from its own base, such as mio3_uv's five
-such panels, was invisible.
+**Suspected cause, confirmed.** The function counted unregistered base
+classes. Ten classes in the tree are `Panel` subclasses that are never
+registered, usually an add-on's own panel base. All ten are direct
+subclasses, so the original code counted them.
+
+Concretely, ucupaint's unregistered `Y_PT_UDIM_Atlas_menu` made the add-on
+report `IMAGE_EDITOR`, which no registered ucupaint panel declares.
+Indirect subclasses were also missed: an add-on deriving its panels from
+its own base, such as mio3_uv's five such panels, was invisible.
 
 **Fix.** `_registered_panel_classes()` now walks the subclass tree
 iteratively and filters on `is_registered`, matching the set the C++ side
@@ -87,34 +88,35 @@ registered classes.
 **Symptom.** Panel layout persistence (`bScreen` to `ScrArea` to
 `SpaceLink` plus regions) worked for saving, since `write_area`
 (`screen.cc:1412`) calls `write_panel_list` unconditionally for every
-space type. It was then thrown away on the first redraw.
+space type. The interface then discarded the layout on the first redraw.
 
 **Suspected cause.** `addon_blend_read_data` allocates a fresh
 `SpaceAddon_Runtime` whose `cached_addon_id` is empty
 (`addon_intern.hh:25`), so the first `addon_main_region_layout` compares
 `STREQ("", "node_wrangler")`, misses the cache, and calls
 `BKE_area_region_panels_free(&region->panels)`, freeing every `Panel`
-just read from the file before `panel_find_by_type` can match it. The same
-wipe fired mid-session on any screen-signature change, including opening
-or closing an unrelated editor.
+just read from the file before `panel_find_by_type` can match it.
+
+The same wipe fired mid-session on any screen-signature change, including
+opening or closing an unrelated editor.
 
 **Fix.** `addon_panel_types_collect` now sets the previous list aside,
 moves back any entry whose ID name is still wanted, refreshing its
 contents in place, and allocates only for genuinely new ones. `Panel::type`
-stays valid for survivors. Panels that really went away are detached
-(`Panel::type = nullptr`) before their copies are freed. The
+stays valid for survivors. The code detaches panels that really went away
+(`Panel::type = nullptr`) before freeing their copies. The
 `BKE_area_region_panels_free` call is gone.
 
-**Verified.** By interactive testing in the built Blender, the only way to
-check this, since panels are instantiated only by a real layout pass. No
-DNA recompile was needed. The rebuild took 1m07s.
+**Verified.** Interactive testing in the built Blender confirmed this
+behavior. Only a real layout pass instantiates panels. The rebuild
+required no DNA recompile and took 1m07s.
 
 **Remaining caveat.** A `.blend` or workspace containing an Add-on editor
 opened in stock Blender degrades the unregistered space type to
 `SPACE_EMPTY` (`screen.cc:1620`) and stashes the original in
-`butspacetype`. No crash, but `SpaceAddon` is an unknown DNA struct there,
-so `addon_id` is lost if that user resaves. Workspace presets are
-one-way.
+`butspacetype`. There is no crash, but `SpaceAddon` is an unknown DNA
+struct there, so the file loses `addon_id` if that user resaves. Workspace
+presets are one-way.
 
 ## 5. Two implementations of one attribution rule — OPEN
 
@@ -132,12 +134,12 @@ C++ answer to Python so there is one implementation. See
 
 **Incident.** 2026-08-01, while hosting ucupaint. Blender stopped
 responding after closing and reopening a 3D Viewport. The process was
-alive with only 7 seconds of CPU time, so it was blocked, not looping.
+alive with only 7 seconds of CPU time, so a wait blocked it, not looping.
 
 **Root cause.** ucupaint registers panels for both the Node Editor and
-the 3D Viewport. With the viewport closed, only its `NODE_EDITOR` panels
-were collected and the delegate was `NODE_EDITOR`. Reopening the viewport
-brought the `VIEW_3D` panels back into collection, and
+the 3D Viewport. With the viewport closed, collection gathered only its
+`NODE_EDITOR` panels, and the delegate was `NODE_EDITOR`. Reopening the
+viewport brought the `VIEW_3D` panels back into collection, and
 `addon_context_delegate_find` returned the first match, now `VIEW_3D`.
 `NODE_PT_YPaintUI.poll()` then ran against a `SpaceView3D`, accessed
 `context.space_data` unguarded, and raised on every redraw.
@@ -150,9 +152,11 @@ as unresponsive with no CPU use and no crash log.
 **Fix (A).** `addon_delegate_spacetype_find` now picks the editor type up
 front, and `addon_panel_types_collect` keeps only panels declaring that
 type, plus space-agnostic ones. No panel is ever polled against a space
-it was not written for. The "first declared type with an editor open
-wins" rule is kept unchanged: with both editors open, ucupaint's Node
-Editor panels no longer appear in an area delegating to the viewport.
+it was not written for.
+
+The design kept the "first declared type with an editor open wins" rule:
+with both editors open, ucupaint's Node Editor panels no longer appear in
+an area delegating to the viewport.
 
 **Fix (B), defence in depth.** See item 7 below.
 
@@ -166,13 +170,13 @@ main thread through `WriteConsoleW` backpressure.
 **Fix.** Panel type copies get their `poll` replaced with
 `addon_panel_poll_guarded`, which mirrors `rna_ui.cc`'s `panel_poll` but
 checks the return code of `rna_ext.call` to distinguish "returned false"
-from "raised." A panel that raises is recorded by ID name and not polled
-again until the registered panel types change.
+from "raised." The editor records a panel that raises by ID name, and does
+not poll it again until the registered panel types change.
 
 ## 8. Crash switching an Add-on editor area to a stock editor type — FIXED
 
-**Incident.** 2026-08-05, reported directly by the user immediately
-after the multi-editor preference feature shipped.
+**Incident.** 2026-08-05, reported after the multi-editor preference
+feature shipped.
 
 **Suspected cause, confirmed.** A residual gap in the earlier
 context-delegation refactor. `ScrArea::context_delegate_spacetype` was
@@ -180,15 +184,14 @@ set and read but never cleared, so it leaked across an area's editor-type
 change, mismatching a new editor's own region against an unrelated
 area's space data.
 
-**Fix.** Cleared generically in `ED_area_newspace()`. User confirmed no
-further crashes since.
+**Fix.** Cleared generically in `ED_area_newspace()`. The issue produced
+no further crashes since.
 
 ## 9. Empty-state context-delegation crash — FIXED
 
 **Symptom.** Recorded in `docs_ui/addon_space_editor_testing.md` as one
-of two bugs found and fixed in the same session that produced the
-testing notes: a crash in the empty-state path during context
-delegation.
+of two bugs found and fixed in the testing session: a crash in the
+empty-state path during context delegation.
 
 **Status.** Fixed in that session, alongside item 10. No automated
 regression test exists yet for this case. See
@@ -202,7 +205,7 @@ entry leaked into a second window's `ui_type` enum.
 
 **Status.** Fixed in the same session as item 9. Currently mitigated at
 the area-type-picker level by hiding the Add-on Editor option in
-non-main windows (commit `af9bcda50c7` ("Add-on Editor: hide the Add-ons menu section in non-main windows")); the underlying multi-window
+non-main windows (commit `af9bcda50c7` ("Add-on Editor: hide the Add-ons menu section in non-main windows")). The underlying multi-window
 delegation gap is still open, see [todo.md](./todo.md) items 7 to 9. No
 automated regression test exists yet. See [testing.md](./testing.md)
 item 1.
@@ -215,8 +218,8 @@ editor.
 
 **Suspected cause, unconfirmed.** Lumos's own table code (an ordinary
 `layout.row(align=True)` with `column()` children) shows nothing
-suspicious. The fault needs real drawing, so it cannot be reproduced
-headlessly.
+suspicious. The fault needs real drawing, so the test suite cannot
+reproduce it headlessly.
 
 **Discriminator to run first.** `LUMOS_EDITOR_PT_LightEditor` is also
 registered in the regular 3D Viewport sidebar, under category "Lumos."
@@ -227,22 +230,25 @@ overlaps only in the Add-on editor, the fault belongs here.
 
 **Estimate, if it is ours.** Roughly 70/30 that it is not ours. The
 refactor moved this content out of a popup, where height is effectively
-unconstrained, into a panel that must report its height correctly. If it
-is ours, the first suspect is the item 4 fix above: `Panel` instances now
-persist across re-collection instead of being freed and recreated, so
-`sortorder`, `sizey`, and `ofsy` now carry over where they previously
-reset on every rebuild, and `PANEL_NEW_ADDED` no longer fires for a
-reused panel. `ui::panels_end` recomputes positions each layout, so this
-should be safe, but it is the one behaviour this editor changed in that
-area. Second suspect, cheap to rule out: `RGN_FLAG_INDICATE_OVERFLOW`,
-set in `addon_main_region_init` to match the Properties editor; it should
-only affect the overflow indicator, not layout.
+unconstrained, into a panel that must report its height correctly.
+
+If it is ours, the first suspect is the item 4 fix above: `Panel`
+instances now persist across re-collection instead of freeing and
+recreated, so `sortorder`, `sizey`, and `ofsy` now carry over where they
+previously reset on every rebuild, and `PANEL_NEW_ADDED` no longer fires
+for a reused panel. `ui::panels_end` recomputes positions each layout, so
+this should be safe, but it is the one behaviour this editor changed in
+that area.
+
+Second suspect, cheap to rule out: `RGN_FLAG_INDICATE_OVERFLOW`, set in
+`addon_main_region_init` to match the Properties editor. It should only
+affect the overflow indicator, not layout.
 
 ## 12. `U.addon_bookmarks` was never freed and never swapped — FIXED
 
 **Symptom.** `bAddonBookmark` got only half of the treatment that item 1
-gave `bAddonEditor`. The list is read (`readfile.cc:4085`) and written
-(`writefile.cc:1312`). Two calls were missing:
+gave `bAddonEditor`. Blender reads the list (`readfile.cc:4085`) and
+writes it (`writefile.cc:1312`). The code missed two calls:
 - `BKE_blender_userdef_data_free()` did not free it. The
   `addon_editors.free_no_destruct()` call sat one line above with no
   match for the bookmarks.
@@ -250,9 +256,9 @@ gave `bAddonEditor`. The list is read (`readfile.cc:4085`) and written
   `VALUE_SWAP(addon_editors)` call sat one line above.
 
 **Consequence.** Two faults:
-1. A leak. Every `bAddonBookmark` leaks each time a `UserDef` is freed.
-   This happens on a preferences reload, on `wm.read_userpref()`, and on
-   an application template change.
+1. A leak. Every `bAddonBookmark` leaks each time Blender frees a
+   `UserDef`. This happens on a preferences reload, on
+   `wm.read_userpref()`, and on an application template change.
 2. The wrong data. Change the application template. The add-ons swap.
    The editors curated against them swap. The bookmarks stay. The
    Bookmarks sidebar panel (`ADDON_PT_bookmarks`) then shows, and can
@@ -270,17 +276,17 @@ four call sites, not by running Blender.
 ## 13. Two stale comments — FIXED
 
 **Symptom.** Two comments described code that does not exist:
-- `space_addon.cc`, the file header, said panel collection and drawing
-  are added in a later step. The file holds
+- `space_addon.cc`, the file header, said developers added panel collection and drawing
+  in a later step. The file holds
   `addon_panel_types_collect`, `addon_main_region_layout`, and
   `addon_main_region_draw`.
 - `DNA_space_types.h`, the `SpaceAddon::addon_id` comment, said the
-  editor treats a leftover `0x01` byte as unset. It does not. Emptiness
-  is tested as `addon_id[0] == 0` (`screen.cc:380`,
+  editor treats a leftover `0x01` byte as unset. It does not. Code tests
+  emptiness as `addon_id[0] == 0` (`screen.cc:380`,
   `space_addon.cc:627`), so the byte reads as set.
 
-**Consequence.** The second one misleads a reader about the failure mode.
-A `0x01` byte resolves to no add-on, and the editor draws the empty
+**Consequence.** The second comment misleads a reader about the failure
+mode. A `0x01` byte resolves to no add-on, and the editor draws the empty
 state. The screen the user sees is the same. The reason in the comment
 was wrong.
 
@@ -294,5 +300,5 @@ was wrong.
   for the planned fix.
 - **Properties-style panels get no `bl_context` filtering** (`contexts`
   passed as `nullptr`). Accepted in the plan.
-- **Per-area add-on internal tab state** (the SourceOps case). Will not
-  be fixed. See [todo.md](./todo.md), "Explicitly out of scope."
+- **Per-area add-on internal tab state** (the SourceOps case). Developers left this
+  item not fixed. See [todo.md](./todo.md), "Explicitly out of scope."

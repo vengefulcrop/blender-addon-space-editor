@@ -7,11 +7,11 @@ last_updated: 2026-09-12
 
 # pyareas Knowledge Base
 
-> **Provenance.** An AI agent generated most of this documentation from
-> working notes. A human verified and corrected part of it. Treat a claim
-> here as a lead, and check it against the source before you rely on it.
-> The build itself is a different matter: it was compiled and tested by
-> hand across many sessions.
+> **Provenance.** 
+> AI agents generated most of this documentation from working notes and code changes, with iterative corrections and cross-referencing. Humans verified and corrected parts of it. 
+> Treat a claim here as a good-faith lead, and check it against the source before you rely on it.
+> The build itself is a different matter: it was compiled and tested manually across many sessions.
+
 
 The technical knowledge base for the **pyareas** Blender fork, which lets a
 user host add-on panels in real editor areas. It is organized under the
@@ -32,8 +32,10 @@ the full table, and for the commands that measure the gap.
   test suite.
 - [Architectural Decisions](./decisions/index.md) — Decision records that
   capture the evaluated tradeoffs.
-- [Research and References](./research/index.md) — Audits of native Blender
-  equivalents, the precision snapping dossier, and the sky rendering study.
+- `research/` — Audits of native Blender equivalents, the precision snapping
+  dossier, and the sky rendering study. **Not distributed.** The folder holds
+  legacy studies, unrelated research, and internal memos. It stays on disk
+  and git ignores it, so a clone of this repository does not carry it.
 - [Handoffs](./handoffs/index.md) — The active session handoff and the archive.
 - [Raw Notes](./raw/README.md) — The handwritten notes of the user. Read
   only for AI agents, and outside the OKF format.

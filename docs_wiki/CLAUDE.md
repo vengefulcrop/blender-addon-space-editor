@@ -32,6 +32,33 @@ standard.
   every coordinate on the 20 pixel grid. Put group nodes first in the array.
 - `.excalidraw` files are hand-made. Treat them as read-only.
 
+## 1c. Verbatim External Copies (DO NOT REWRITE)
+These files are unmodified copies of documents written elsewhere. The
+ASD-STE100 rules, the register rules, and the audience rules do NOT apply to
+them. Do not rewrite the prose, the headings, or the wording. A file carries
+`verbatim: true` in its frontmatter when this applies.
+
+- `reference/c_cpp_style.md`
+- `reference/c_cpp_best_practice.md`
+- `reference/blend_file_compatibility.md`
+- `reference/okf_spec.md`
+
+Only two edits are allowed: update the YAML frontmatter, and refresh the copy
+from its upstream source. To record a local deviation, write a separate file
+and link to it.
+
+## 1d. The `research/` Folder Is Not Distributed
+`research/` holds legacy studies, unrelated research, and internal memos.
+`.gitignore` excludes it, so a clone of this repository does not carry it.
+The files stay on disk for local reading.
+
+- Do not link to `research/` from any other section. Such a link breaks for
+  every reader who clones the repository.
+- Do not move a file out of `research/` to make it distributable. Write the
+  fact into the right section instead, and leave the research file alone.
+- Rule 1b still applies inside the folder: an audit names the agent that
+  produced it.
+
 ## 2. Navigation Protocol (Progressive Disclosure)
 - Always start with the root `index.md`.
 - Read the section `index.md` files (for example `architecture/index.md`) to
@@ -97,3 +124,48 @@ When you add or update knowledge:
    the date, and the changes.
 8. **Validation:** Run `python docs_wiki/tools/validate_okf.py` to confirm
    compliance.
+
+## 9. The Style Linter Over-Counts Three Things
+
+Run the linter on every file you write or edit:
+
+```
+python docs_wiki/tools/ste_lint.py --json <file>
+```
+
+Read `per100w`. The target is 2.5 or lower.
+
+**The raw score is not the measure.** Subtract these three before you judge a
+file. Never rewrite correct text to satisfy a false positive:
+
+1. **Possessives.** The linter counts `panel's` and `add-on's` as
+   contractions. ASD-STE100 bans a contraction such as "don't". A possessive
+   is correct English and stays. One file scored 37 of these.
+2. **YAML frontmatter.** The linter reads the `tags:` line as prose, so every
+   file gets a noun-train hit from its own frontmatter.
+3. **Markdown tables.** The linter joins each table row into one sentence, so
+   a file built around a table reports long sentences that do not exist.
+
+To get the true score, strip the frontmatter, the fenced code blocks, and
+every line that starts with `|`. Then subtract the possessive count from the
+contraction count.
+
+These violations are always real: `semicolon`, `passive_voice`,
+`complex_tense`, `long_paragraph(>6s)`, `phrasal_verb`,
+`marketing_adjective`, `banned_word`, and a `long_sentence(>20w)` outside a
+table.
+
+A file marked `verbatim: true` is exempt. See rule 1c.
+
+## 10. Keep the Two Rule Files in Step
+
+`CLAUDE.md` is the source of truth. `GEMINI.md` is generated from it, and the
+two differ in section 1b only, which names the canvas tooling.
+
+After you edit `CLAUDE.md`, run:
+
+```
+python docs_wiki/tools/sync_agent_rules.py
+```
+
+Never edit `GEMINI.md` by hand. The script overwrites it.

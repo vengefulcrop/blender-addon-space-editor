@@ -9,7 +9,7 @@ last_updated: 2026-09-12
 # UX: Sidebar and Bookmarks
 
 **Status**: first pass implemented and functional (2026-08-18). Several
-pieces from this document are deliberately still unbuilt; see
+pieces from this document stay unbuilt. See
 [Sidebar Tree View](../architecture/sidebar_tree_view.md#not-built-yet).
 
 ## The idea
@@ -18,16 +18,19 @@ A left-side sidebar, in the style of the File Browser's bookmarks column,
 with two vertically stacked panels:
 
 - **Bookmarks** — a flat, searchable list of specific add-on panels the
-  user has pinned.
+  user pinned.
 - **Addons** — a hierarchical listing of every add-on that registers any
-  panel at all; each entry expands to show the panel arrangements it
+  panel at all. Each entry expands to show the panel arrangements it
   offers per space type.
 
 **Intended flow**: the Addons panel lists all valid add-ons. Expanding one
 shows its panel sets, broken down by which editor type each set targets.
+
 Selecting a specific one hosts it in the main region, same as the
 editor-type dropdown, but discoverable as a browsable tree instead of a
-flat enum. Bookmarks are scoped to a specific panel set of a specific
+flat enum.
+
+Bookmarks target a specific panel set of a specific
 add-on, not the whole add-on, so a user can bookmark just the one
 editor-type entry they use. Bookmarks persist.
 
@@ -64,6 +67,7 @@ implementation this design produced.
 Functional, verified by launching a real build: the sidebar renders, the
 tree lists add-ons with their real display names, expands to per-editor-
 type rows, and selecting a row hosts that add-on/space-type pair.
+
 Bookmarks pin, unpin, list, and reopen. See
 [Sidebar Tree View](../architecture/sidebar_tree_view.md#what-was-built-first-pass)
 for the full built/not-built breakdown.
@@ -80,3 +84,4 @@ for the full built/not-built breakdown.
 - [Sidebar Tree View](../architecture/sidebar_tree_view.md)
 - [Native Tree View vs Hand-Rolled Flat List](../decisions/adr_007_native_tree_view_vs_flat_list.md)
 - [UX: Editor-Type Picker](./ux_addon_picker.md)
+

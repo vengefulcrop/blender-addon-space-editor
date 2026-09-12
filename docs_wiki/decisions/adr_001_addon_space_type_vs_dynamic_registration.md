@@ -22,7 +22,9 @@ Register one new space type, `SPACE_ADDON`. Every hosted add-on is a
 subtype of it, using the existing subtype mechanism at
 `BKE_screen.hh:156-158` (`space_subtype_get`/`_set`/`_item_extend`) and the
 existing subtype-folding logic in `rna_Area_ui_type_itemf`
-(`rna_screen.cc:216-233`). This is the same mechanism the Node Editor uses
+(`rna_screen.cc:216-233`).
+
+This is the same mechanism the Node Editor uses
 to present Shader, Compositor, and Geometry Nodes as three dropdown
 entries while being one registered space type.
 
@@ -38,16 +40,19 @@ entries while being one registered space type.
 - No dynamic registration, no runtime `SpaceType` allocation, no teardown
   lifecycle, and no dangling-`SpaceType` crash risk, because no
   `SpaceType` is ever created or destroyed at runtime.
+
 - Subtype indices are not stable across sessions, since add-on
-  enable/disable reorders them. The index is a view concern only; the DNA
+  enable/disable reorders them. The index is a view concern only. The DNA
   stores the add-on's module name as a string
   (`SpaceAddon::addon_id`), mirroring how `SpaceNode` stores the node-tree
   type idname rather than its index.
+
 - Estimated code volume for space registration dropped from ~80-120 LOC of
-  new kernel machinery to near zero; the total design estimate dropped
+  new kernel machinery to near zero. The total design estimate dropped
   from ~850-1,200 LOC to ~600-800 LOC.
 
 ## Related
 
 - [Add-on Space Type](../architecture/addon_space_type.md)
 - [Fork Mergeability](../architecture/fork_mergeability.md)
+

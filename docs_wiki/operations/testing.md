@@ -34,7 +34,7 @@ data-structure logic.
 No `editors/space_addon/tests/` directory exists, and no other editor
 module has GTest coverage either. Blender does not GTest its editor
 modules in isolation, because they depend inherently on window, context,
-and OpenGL state. The absence of GTest coverage here is expected, not a
+and OpenGL state. Developers expect the absence of GTest coverage here, not a
 gap specific to this fork.
 
 ### `ui_simulate` (Python), for interactive and UI behaviour
@@ -53,20 +53,20 @@ asserts `space.search_filter` matches what typing produced.
 
 `test_workspace.py` and `test_fullscreen.py` already establish
 window/screen-state testing as a category in this suite. No existing test
-creates a second window (`bpy.ops.wm.window_new()`); that would be new
+creates a second window (`bpy.ops.wm.window_new()`). That would be new
 ground, not a copy of a precedent.
 
 **This is the tier this feature belongs in.** The empty-state
 context-delegation crash and the multi-window dropdown leak, both fixed
 and recorded in [bugfix.md](./bugfix.md) items 9 and 10, are
 UI/context-integration bugs, not pure algorithmic bugs. GTest is the
-wrong tool for either; `ui_simulate` is the right one, and the
+wrong tool for either. `ui_simulate` is the right one, and the
 search-in-editors precedent shows the shape a test would take almost
 directly.
 
 ## 2. The manual test scripts that exist today
 
-None of these are automated. Each is a standalone script, run by hand
+None of these runs automatically. Each is a standalone script, run by hand
 from Blender's Text Editor or Python Console with
 `exec(open(<path>).read())`. They exercise the feature interactively but
 assert nothing programmatically.
@@ -75,10 +75,16 @@ assert nothing programmatically.
 
 Enables a target add-on if needed (default `node_wrangler`, set through
 the `ADDON` module-level variable), converts the largest suitable area
-into an Add-on editor, and points it at that add-on. `ensure_enabled()`
-checks and enables the add-on through `addon_utils`. `panel_count()`
+into an Add-on editor, and points it at that add-on.
+
+`ensure_enabled()`
+checks and enables the add-on through `addon_utils`.
+
+`panel_count()`
 counts the add-on's registered sidebar (`UI` region) panels and warns if
-the count is zero, since the editor will then be empty. `pick_area()`
+the count is zero, since the editor will then be empty.
+
+`pick_area()`
 reuses an existing `ADDON` area if one exists, otherwise picks the
 largest area not in the `KEEP` set (`CONSOLE`, `TEXT_EDITOR`, `OUTLINER`,
 `PROPERTIES`), so the script stays usable while testing.
@@ -86,12 +92,19 @@ largest area not in the `KEEP` set (`CONSOLE`, `TEXT_EDITOR`, `OUTLINER`,
 ### `docs_ui/test_addon_editor_delegate.py`
 
 Tests context delegation specifically. Node Wrangler's panel polls
-`space.type == 'NODE_EDITOR' and space.node_tree is not None`. Without
-delegation the panel is collected but never drawn, because
-`space_data` in an Add-on editor is a `SpaceAddon`. With delegation the
-editor borrows an open Node Editor for the duration of the panel layout,
-and the panel draws. `ensure_material()` gives the active object a
-material so a shader node tree exists, since the poll needs one. `main()`
+`space.type == 'NODE_EDITOR' and space.node_tree is not None`.
+
+Without delegation, the system collects the panel but never draws it, because
+`space_data` in an Add-on editor is a `SpaceAddon`.
+
+With delegation the
+editor borrows an open Node Editor during the panel layout,
+and the panel draws.
+
+`ensure_material()` gives the active object a
+material so a shader node tree exists, since the poll needs one.
+
+`main()`
 then needs at least two non-`KEEP` areas (`CONSOLE`, `TEXT_EDITOR`):
 the largest becomes the Add-on editor hosting `node_wrangler`, the second
 largest becomes a Node Editor set to `ShaderNodeTree` / `OBJECT`, which
@@ -100,14 +113,21 @@ the Add-on editor should borrow.
 ### `docs_ui/test_addon_editor_demo.py`
 
 Proves the Add-on editor actually draws panels, independently of whether
-any real add-on's `poll()` happens to pass. It registers a throwaway
+any real add-on's `poll()` happens to pass.
+
+It registers a throwaway
 module named `addon_editor_demo` at runtime, containing three panels
 with no `poll()`: `DEMO_PT_main` and `DEMO_PT_second` (both `VIEW_3D` /
 `UI`, category "Demo"), and `DEMO_PT_child`, a sub-panel of
-`DEMO_PT_main`. Panels are attributed to an add-on by the module they are
-defined in, so these panels register as belonging to `addon_editor_demo`
-exactly as a real add-on's would. `unregister_existing()` cleans up a
-previous run's classes before re-registering. `main()` reuses an
+`DEMO_PT_main`.
+
+Blender attributes panels to an add-on based on the module that defines them, so these panels register as belonging to `addon_editor_demo`
+exactly as a real add-on's would.
+
+`unregister_existing()` cleans up a
+previous run's classes before re-registering.
+
+`main()` reuses an
 existing `ADDON` area or converts the largest suitable one, then sets
 `area.spaces.active.addon_id = "addon_editor_demo"`. Expected result: two
 top-level panels and one sub-panel drawn.
@@ -152,11 +172,17 @@ None of these exist yet.
 
 Every verification recorded in the implementation log behind
 `docs_ui/legacy/code_review.md` is manual: confirmed against the bundled
-Node Wrangler, widget metrics measured in pixels by hand. None of it is
-asserted in a test file. Six separate shipped-then-patched bugs are on
+Node Wrangler, widget metrics measured in pixels by hand.
+
+None of these test files asserts them.
+
+Six separate shipped-then-patched bugs are on
 record (sentinel value, extension identity, `invoke_search_popup` return
 value, blank icon, area-switch crash, and the empty-state crash), a
 pattern consistent with no automated regression coverage catching any of
-them before a live reproduction did. Closing items 1 and 2 above would
+them before a live reproduction did.
+
+Closing items 1 and 2 above would
 directly guard the two bugs fixed in the same session,
 [bugfix.md](./bugfix.md) items 9 and 10, against silent reintroduction.
+

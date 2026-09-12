@@ -8,7 +8,7 @@ last_updated: 2026-09-12
 
 # Building This Fork (Windows)
 
-This procedure is verified on 2026-07-31 against `main` at commit `027ef661`
+Tests verified this procedure on 2026-07-31 against `main` at commit `027ef661`
 (Blender 5.3.0 alpha) on Windows 10.
 
 The official documentation at
@@ -65,7 +65,9 @@ python .\build_files\utils\make_update.py --no-blender
 
 The `--no-blender` flag skips the source-repo pull. It does not rebase or
 fast-forward your working branch. It still fetches the libraries, which is
-the only part that matters. Expect about 6.5 GB of download and a long silent
+the only part that matters.
+
+Expect about 6.5 GB of download and a long silent
 stretch during `git lfs pull`. That step produces no incremental output and
 looks frozen when it works normally.
 
@@ -94,23 +96,26 @@ $cmake = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\C
          -DOPTIX_ROOT_DIR="C:\ProgramData\NVIDIA Corporation\OptiX SDK 9.1.0"
 ```
 
-A final line reading "-- Build files have been written to: ..." means
-success.
+A final line reading `"-- Build files have been written to: ..."` indicates success.
 
 Do not reconfigure from scratch afterward. CMake re-runs itself automatically
 when `CMakeLists.txt` files change. A manual wipe costs a full rebuild for no
-reason. Never reconfigure while a build runs. Changing cache variables
+reason.
+
+Never reconfigure while a build runs. Changing cache variables
 invalidates targets that MSBuild already walks.
 
 ### OptiX is not needed in this fork
 
-The `-DOPTIX_ROOT_DIR=...` flag is inherited from the previous fork, which
-modified the Cycles kernel. This fork touches only the UI and editor layer,
-so OptiX is not required.
+The previous fork modified the Cycles kernel and introduced the `-DOPTIX_ROOT_DIR=...` flag.
+This fork touches only the UI and editor layer,
+so the build does not require OptiX.
 
 Its cost is small either way. The configure summary reports
 `WITH_CYCLES_CUDA_BINARIES OFF` and `WITH_CYCLES_HIP_BINARIES OFF`, so the
-build compiles no GPU kernels. OptiX contributes only host-side device code
+build compiles no GPU kernels.
+
+OptiX contributes only host-side device code
 and headers. Dropping it saves minutes, not hours.
 
 To build without it, omit `-DOPTIX_ROOT_DIR` and add this flag:
@@ -121,7 +126,9 @@ To build without it, omit `-DOPTIX_ROOT_DIR` and add this flag:
 
 If iteration speed matters more than release fidelity, drop Cycles wholesale
 with `-DWITH_CYCLES=OFF`, because nothing in this fork's plan touches
-rendering. Build the final, publishable version with the full default
+rendering.
+
+Build the final, publishable version with the full default
 configuration, so the binary matches what upstream users would compile.
 
 ## Building
@@ -136,15 +143,20 @@ $build = "<build>"
 
 - The `--target INSTALL` flag is required. Building the default target
   leaves DLLs uncopied, and the resulting `blender.exe` does not launch.
+
 - The `--target INSTALL` flag is equally required after Python-only changes.
   That failure is silent rather than obvious. The build copies `scripts/`
-  into `bin/Release/<version>/scripts/` at install time, so building only
-  the `blender` target leaves Blender running whatever copy of
-  `scripts/startup/bl_ui/*.py` was installed last. Edits to `space_addon.py`
+  into `bin/Release/<version>/scripts/` at install time.
+
+  Building only the `blender` target leaves Blender running whatever copy of
+  `scripts/startup/bl_ui/*.py` the build installed last. Edits to `space_addon.py`
   then have no effect at all, with no error. The panel simply never
-  registers. This cost a long debugging detour on 2026-08-18, chasing C++
+  registers.
+
+  This cost a long debugging detour on 2026-08-18, chasing C++
   causes for a stale 13-day-old script. If a Python change appears to do
   nothing, check the timestamp of the installed copy before anything else.
+
 - The `/m` flag enables parallel MSBuild.
 
 The output binary is at this path:
@@ -165,16 +177,19 @@ Measured on 2026-08-01 at `/m:6` on the machine described in
 | Incremental, Cycles-only change | About 2 minutes |
 | Incremental, DNA header touched | 8 minutes 49 seconds |
 
-What actually triggers the DNA cascade is touching the file, not changing its
-layout. The dependency is a timestamp, so a comment-only edit to a `DNA_*.h`
-file costs the same 8-minute rebuild as adding a struct member. The
-`makesdna` tool re-runs, and everything downstream of the generated DNA
+Touching the file, not changing its layout, triggers the DNA cascade.
+The dependency is a timestamp, so a comment-only edit to a `DNA_*.h`
+file costs the same 8-minute rebuild as adding a struct member.
+
+The `makesdna` tool re-runs, and everything downstream of the generated DNA
 rebuilds, even when the generated output is byte-identical. Batch DNA edits
 together rather than making them one at a time.
 
 By contrast, work confined to `source/blender/editors/space_addon/`,
 including its own `addon_intern.hh` (which is not a DNA header), recompiles
-one translation unit and relinks in about a minute. Runtime-only structs such
+one translation unit and relinks in about a minute.
+
+Runtime-only structs such
 as `SpaceAddon_Runtime` live there deliberately, because only the opaque
 pointer to it is in DNA. Changes to the runtime cache, panel collection, or
 delegation logic all fall in this cheap tier.
@@ -183,7 +198,9 @@ delegation logic all fall in this cheap tier.
 
 On 2026-08-01, a DNA-triggered rebuild with bare `/m` (16 parallel nodes on
 this machine) failed after 7 minutes 36 seconds with 106 errors, 101 of them
-`C1060: compiler is out of heap space`. The same tree, with the same edits,
+`C1060: compiler is out of heap space`.
+
+The same tree, with the same edits,
 rebuilt cleanly at `/m:6` in 8 minutes 49 seconds. The cap costs nothing in
 wall-clock time and is simply more reliable.
 
@@ -195,7 +212,9 @@ Use this command instead:
 
 Recognize this failure, because it looks exactly like a code bug and is not
 one. The errors point at innocent bystanders such as `<mutex>`, `<vector>`,
-`fmt/format.h`, and `BLI_math_vector_types.hh`. None of these are the files
+`fmt/format.h`, and `BLI_math_vector_types.hh`.
+
+None of these are the files
 you edited, because the DNA cascade puts every node compiling Blender's
 heaviest translation units at once. Secondary symptoms in the same log
 include:
@@ -233,24 +252,29 @@ Use `/m:6` rather than bare `/m`, for the reason in the previous section.
 
 Each of these items cost real time on the first setup.
 
-`make.bat` cannot run unattended. It has two separate blockers. It prompts
-interactively for the library download (see [Libraries](#libraries)), and it
-invokes `vswhere.exe`, expecting it on PATH. It falls back to a working
+`make.bat` cannot run unattended. It has two separate blockers.
+
+It prompts interactively for the library download (see [Libraries](#libraries)), and it
+invokes `vswhere.exe`, expecting it on PATH.
+
+It falls back to a working
 VS2022 detection, but it first prints a confusing message:
 `'vswhere.exe' is not recognized`. The direct `cmake --build` path avoids
 both problems.
 
 CMake is not on the system PATH. The official instructions say to tick "Add
-CMake to the system PATH" in the CMake installer. There is no standalone
+CMake to the system PATH" in the CMake installer.
+
+There is no standalone
 CMake on this machine at all. A bare `cmake` command fails with
 `CommandNotFoundException`. Always use the full VS-bundled path, or prepend
 its `bin` directory to `$env:PATH` for the session.
 
-The library version tag lags the source version. `lib/windows_x64` is
-tagged `v5.2.0` while the source is 5.3.0-alpha. This is normal and is not a
+The library version tag lags the source version. `lib/windows_x64`
+carries tag `v5.2.0` while the source is 5.3.0-alpha. This is normal and is not a
 mismatch to fix.
 
-Library and source versions must still be updated together. After you pull
+Developers must update library and source versions together. After you pull
 upstream changes into `main`, re-run the [Libraries](#libraries) step before
 rebuilding, or you may get link errors against stale libraries.
 
@@ -276,17 +300,19 @@ Close Blender and re-run the build. Only the link and install steps remain,
 so it finishes quickly.
 
 Script-only changes still need installing. Blender runs from the scripts in
-the build directory, not from the source tree. After you edit anything under
+the build directory, not from the source tree.
+
+After you edit anything under
 `scripts/`, either re-run the build (which copies the files) or copy the
 files directly into `bin\Release\5.3\scripts\...`. The direct copy is useful
-when Blender is running and a full install would fail on the locked
+when Blender runs and a full install would fail on the locked
 executable.
 
 ## Fork workflow
 
 Work happens on `pyareas/addon-space-editor`, branched from `main` at
 `027ef661`. Never commit to `main`, so that upstream rebases stay clean and
-the publishable diff is produced with this command:
+developers produce the publishable diff with this command:
 
 ```powershell
 git format-patch main..pyareas/addon-space-editor
@@ -300,3 +326,4 @@ directory and rerun the [Building](#building) step.
 
 See `addon_space_editor_plan.md` in `docs_ui/` for the feature plan.
 </content>
+
