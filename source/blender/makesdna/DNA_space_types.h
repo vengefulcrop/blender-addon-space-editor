@@ -1327,9 +1327,6 @@ struct SpaceProject {
 /** \name Add-on Editor
  * \{ */
 
-/** See #SpaceAddon::addon_id. */
-#define SPACE_ADDON_ID_PICK_MARKER '\x01'
-
 /**
  * Hosts the panels of a single add-on or extension as a full editor.
  *
@@ -1353,11 +1350,10 @@ struct SpaceAddon {
    * not enabled, so that re-enabling it restores the editor rather than corrupting
    * the workspace.
    *
-   * A leading #SPACE_ADDON_ID_PICK_MARKER byte is a transient signal, not a module
-   * name: it means the user just selected "Add an Add-on..." in the editor type menu.
-   * Set by `addon_space_subtype_set` and consumed by `rna_Area_ui_type_update` (the
-   * `set` callback has no #bContext to invoke the picker operator with; `update` does
-   * and runs immediately after). Never left set once that update has run.
+   * Always a plain module name. The tree view in the sidebar writes it directly.
+   * A file saved by an early build of this fork can hold a leading 0x01 byte here,
+   * left by the removed curated-list picker. That byte matches no module name, so the
+   * editor treats the field as unset.
    */
   char addon_id[128] = {};
 
