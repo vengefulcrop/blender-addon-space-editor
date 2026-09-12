@@ -79,7 +79,7 @@ Three checks. Each exits 1 when work remains.
 |---|---|
 | `python docs_wiki/tools/validate_okf.py` | Every concept file carries OKF frontmatter |
 | `python docs_wiki/tools/check_references.py` | No document names a symbol or a line that does not exist |
-| `tools/oft/trace.sh` | Five documented concepts match the code that claims them |
+| `tools/oft/trace.sh` | Every documented concept matches the code that claims it |
 
 A pre-commit hook runs the trace. `check_facts.py` compares a document
 against its committed version, so a rewrite does not lose a fact.

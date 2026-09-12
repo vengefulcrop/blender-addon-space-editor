@@ -3,7 +3,7 @@ type: reference
 title: "Traceability Between the Wiki and the Code"
 description: "How a documented concept links to the code that implements it, how to run the trace, and how to remove the tags before an upstream patch"
 tags: [reference, traceability, openfasttrace, tooling]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Traceability Between the Wiki and the Code
@@ -49,6 +49,29 @@ static short addon_delegate_spacetype_find(const bContext *C, ...)
 ```
 
 `arch` is the artifact type. The middle is the name. `~1` is the version.
+
+## Artifact type prefixes
+
+OpenFastTrace does not enforce a prefix. The project uses two of the
+conventional strings, and no custom prefix:
+
+| Prefix | Meaning | This fork |
+|---|---|---|
+| `feat` | High-level feature | Not used |
+| `req` | User requirement | Not used |
+| `arch` | Architectural requirement | Every concept in `docs_wiki/architecture` |
+| `dsn` | Design requirement | Not used |
+| `impl` | Implementation | Every tag in the code |
+| `utest` | Unit test | Not used |
+| `itest` | Integration test | Not used |
+| `stest` | System test | Not used |
+| `uman` | User manual | Not used |
+| `oman` | Operation manual | Not used |
+
+A new prefix needs a reason. `req` fits a recorded user request, and `dsn`
+fits a design specification that code implements. Neither is in the trace
+today. A decision record carries no ID, because it documents a choice and not
+a mechanism.
 
 ## Running the trace
 

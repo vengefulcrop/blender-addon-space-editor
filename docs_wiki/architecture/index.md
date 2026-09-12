@@ -8,6 +8,13 @@ last_updated: 2026-09-13
 
 # Architecture
 
+Each section that a piece of code implements carries an ID in the form
+`arch~<name>~<version>`, and a `Needs: impl` line. The code carries a matching
+tag with the same ID. `tools/oft/trace.sh` reports a concept that no code
+claims, and a tag that no concept defines. Read the concept before you edit the
+code it names. See [Traceability](../reference/traceability.md) for the tag
+syntax and the commands.
+
 The Add-on Editor lets a user host an add-on's panels as a full editor area,
 selectable from the standard editor-type dropdown. This section documents
 the C++ and Python architecture that makes this work.

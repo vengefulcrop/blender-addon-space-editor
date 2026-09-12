@@ -48,6 +48,10 @@ the full table, and for the commands that measure the gap.
   (`python docs_wiki/tools/validate_okf.py`).
 - [Register Wordlist and Patterns](./tools/register_wordlist.md) — Banned
   novelistic, dramatic, and conversational phrasing patterns.
+- [Traceability](./reference/traceability.md) — Every concept in
+  [Architecture](./architecture/index.md) carries an ID, and the code that
+  implements it carries a tag with the same ID. `tools/oft/trace.sh` checks
+  the two sides against each other. Read this before you edit tagged code.
 - [Style Linter](./tools/ste_lint.py) — the ASD-STE100 checker, vendored
   under MIT. See [ste_lint_LICENSE.txt](./tools/ste_lint_LICENSE.txt).
 - [Mutation Ledger](./log.md) — The audit record of knowledge base changes.

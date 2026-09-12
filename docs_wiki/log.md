@@ -299,3 +299,13 @@ pyareas OKF knowledge base.
     `BKE_blender_version.h`, and `versioning_530.cc`.
   - No ADR carries a tag. A decision record documents a choice, not a
     mechanism.
+- **2026-09-13** (Agent: Claude Opus 5):
+  - Named the trace in [index.md](./index.md) and in
+    [architecture/index.md](./architecture/index.md). A reader who starts at
+    the root index now finds it, and a reader in an architecture document
+    learns what the ID and the `Needs: impl` line mean.
+  - Added the artifact type prefix table to
+    [traceability.md](./reference/traceability.md). The project uses `arch` and
+    `impl`, which are the conventional OpenFastTrace strings.
+  - Replaced the count in [handoff.md](./handoffs/handoff.md). It said five
+    concepts, and a count goes stale on every pass.
