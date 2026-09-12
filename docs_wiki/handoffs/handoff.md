@@ -8,7 +8,7 @@ last_updated: 2026-09-12
 
 # Add-on Space Editor — Handoff
 
-Branch `pyareas/addon-space-editor`, 49 commits on upstream `main` at
+Branch `pyareas/addon-space-editor`, on upstream `main` at
 `027ef661892` (2026-07-31). The diff touches 43 files under `source/` and
 `scripts/`: 2346 insertions, 43 deletions.
 

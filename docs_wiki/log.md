@@ -258,3 +258,7 @@ pyareas OKF knowledge base.
     `CLAUDE.md` named a path outside the repository.
   - Replaced the machine paths in [building.md](./reference/building.md) with
     `<repo>` and `<build>`.
+- **2026-09-13** (Agent: Claude Opus 5):
+  - Rewrote the branch history to remove the machine paths from every commit.
+  - Dropped the commit count from [handoff.md](./handoffs/handoff.md) and the
+    root README. The number went stale on every commit.

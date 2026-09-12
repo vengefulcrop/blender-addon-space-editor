@@ -14,7 +14,7 @@ Everything else in this tree is upstream Blender, under the GNU General Public L
 State
 -----
 
-Branch `pyareas/addon-space-editor`, 49 commits on upstream `main` at `027ef661892`, dated 2026-07-31. Base version: Blender 5.3.0 alpha. The diff touches 43 files under `source/` and `scripts/`: 2346 insertions, 43 deletions.
+Branch `pyareas/addon-space-editor`, on upstream `main` at `027ef661892`, dated 2026-07-31. Base version: Blender 5.3.0 alpha. The diff touches 43 files under `source/` and `scripts/`: 2346 insertions, 43 deletions.
 
 The feature is a work in progress. 29 tasks and 2 defects are open. Per-panel context delegation is not built. The delegate is one value for the whole area, so an add-on that registers panels for two editor types gets one delegate.
 
