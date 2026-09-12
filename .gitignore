@@ -89,3 +89,9 @@ compile_commands.json
 blendcache_*
 *.blend1
 *.blend2
+
+# Working documentation folders. They are notes and research, not part of
+# the Blender source tree. The upstream manual stays in /doc/.
+# The OKF knowledge base in /docs_wiki/ is tracked.
+/docs_*/
+!/docs_wiki/
