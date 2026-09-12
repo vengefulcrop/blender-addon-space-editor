@@ -29,7 +29,7 @@ Documentation
 - [Handoff](./docs_wiki/handoffs/handoff.md) — the state of the branch, the caveats, and what is open.
 - [Architecture](./docs_wiki/architecture/index.md) — the space type, panel hosting, and context delegation.
 - [Building this fork (Windows)](./docs_wiki/reference/building.md)
-- [Traceability](./docs_wiki/reference/traceability.md) — how a documented concept links to the code that implements it.
+- [Traceability](./docs_wiki/reference/traceability.md) — how a documented concept links to the code that implements it. The tags are not idiomatic Blender, and `python tools/oft/strip_tags.py` removes them before an upstream patch.
 - [Upstream base and version](./docs_wiki/reference/upstream_base.md) — every line number in the knowledge base is measured against this commit.
 
 First steps in a fresh clone

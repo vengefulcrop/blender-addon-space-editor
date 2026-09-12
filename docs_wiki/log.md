@@ -309,3 +309,8 @@ pyareas OKF knowledge base.
     `impl`, which are the conventional OpenFastTrace strings.
   - Replaced the count in [handoff.md](./handoffs/handoff.md). It said five
     concepts, and a count goes stale on every pass.
+- **2026-09-13** (Agent: Claude Opus 5):
+  - Moved the notice about the tags and `strip_tags.py` to the start of
+    [traceability.md](./reference/traceability.md), and named it in
+    [index.md](./index.md), [architecture/index.md](./architecture/index.md),
+    and the root README. It stood only at the end of each document before.

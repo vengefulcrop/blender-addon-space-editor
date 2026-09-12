@@ -15,6 +15,9 @@ claims, and a tag that no concept defines. Read the concept before you edit the
 code it names. See [Traceability](../reference/traceability.md) for the tag
 syntax and the commands.
 
+The tags are not idiomatic Blender. Run `python tools/oft/strip_tags.py` to
+remove every tag line before you send a patch upstream.
+
 The Add-on Editor lets a user host an add-on's panels as a full editor area,
 selectable from the standard editor-type dropdown. This section documents
 the C++ and Python architecture that makes this work.

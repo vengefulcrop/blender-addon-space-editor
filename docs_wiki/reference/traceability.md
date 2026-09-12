@@ -14,6 +14,12 @@ with the same ID. The link is per concept, not per file.
 [OpenFastTrace](https://github.com/itsallcode/openfasttrace) 4.9.0 checks the
 two sides against each other. It is one jar and needs a Java runtime.
 
+The tags are not idiomatic Blender. This fork carries them, and an upstream
+patch does not. Run `python tools/oft/strip_tags.py` to remove every tag line
+before you send a patch to `projects.blender.org`. Each tag sits on its own
+line, so the removal leaves the surrounding comment untouched. See
+[Before an upstream patch](#before-an-upstream-patch).
+
 ## Setup, once per clone
 
 ```

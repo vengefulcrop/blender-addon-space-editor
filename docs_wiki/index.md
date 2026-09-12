@@ -51,7 +51,9 @@ the full table, and for the commands that measure the gap.
 - [Traceability](./reference/traceability.md) — Every concept in
   [Architecture](./architecture/index.md) carries an ID, and the code that
   implements it carries a tag with the same ID. `tools/oft/trace.sh` checks
-  the two sides against each other. Read this before you edit tagged code.
+  the two sides against each other. Read this before you edit tagged code. The
+  tags are not idiomatic Blender, and `python tools/oft/strip_tags.py` removes
+  them before an upstream patch.
 - [Style Linter](./tools/ste_lint.py) — the ASD-STE100 checker, vendored
   under MIT. See [ste_lint_LICENSE.txt](./tools/ste_lint_LICENSE.txt).
 - [Mutation Ledger](./log.md) — The audit record of knowledge base changes.
