@@ -4,6 +4,9 @@ Reference material for the pyareas fork: the upstream base, the build
 guide, the Blender C/C++ handbooks, the blend file compatibility rules,
 and the OKF specification.
 
+- [Traceability Between the Wiki and the Code](./traceability.md) — How a
+  documented concept links to the code, how to run the trace, and how to
+  remove the tags before an upstream patch.
 - [Upstream Base and Version](./upstream_base.md) — The Blender version this
   fork targets, the upstream commit it sits on, and how to measure the gap.
 

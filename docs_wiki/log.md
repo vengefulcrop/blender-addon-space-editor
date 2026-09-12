@@ -179,3 +179,30 @@ pyareas OKF knowledge base.
     dead symbol.
   - Recorded in [testing.md](./operations/testing.md) that the three test
     scripts are not distributed.
+
+- **2026-09-12** (Agent: Claude Opus 5):
+  - Wired OpenFastTrace 4.9.0. Five architecture concepts now carry an ID,
+    and five functions carry a matching tag. The trace passes on 10 items.
+  - Added rule 1f to `CLAUDE.md` and `GEMINI.md`. It gives the routine: read
+    the tagged concept before you edit, and raise the version when the
+    meaning changes.
+  - Added `tools/oft/`: `fetch_oft.sh`, `trace.sh`, and `strip_tags.py`. The
+    jar is not committed.
+
+- **2026-09-12** (Agent: Claude Opus 5):
+  - Added a pre-commit hook that runs the trace, plus
+    `tools/oft/install_hook.sh` to install it. A commit that touches
+    `source/`, `scripts/`, or `docs_wiki/` and breaks the trace is refused.
+  - Pinned a SHA-256 checksum in `tools/oft/fetch_oft.sh`. The jar stays out
+    of the repository, because OpenFastTrace is GPL-3.0.
+  - Extended rule 1f with the hook, and with one correction: never put
+    `strip_tags.py --check` in a hook, because this fork carries the tags.
+
+- **2026-09-12** (Agent: Claude Opus 5):
+  - Added [reference/traceability.md](./reference/traceability.md). The
+    traceability system was described only in the agent rule files, which are
+    instructions, not reference. A reader navigating the wiki could not find
+    it.
+  - Added `tools/oft/bump.py`. It raises a concept version in two steps. The
+    first raises the wiki and names every code site still claiming the old
+    version. The second raises those tags, after review.

@@ -102,3 +102,6 @@ blendcache_*
 
 # One-off task prompts for an agent. They go stale as the work lands.
 /gemini_prompt.md
+
+# The OpenFastTrace jar. Fetch it with tools/oft/fetch_oft.sh
+/tools/oft/*.jar

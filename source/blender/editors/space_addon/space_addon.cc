@@ -331,6 +331,7 @@ static void addon_panel_owner_get(const PanelType &pt, char *r_addon_id, size_t 
  * so that logic lives once, in Python, read by both the fallback panel's own `draw()`
  * and the header's info button - see `_addon_supported_spaces()` in `space_addon.py`.
  */
+/* [impl->arch~panel-type-copy~1] */
 static void addon_panel_types_collect(const bContext *C,
                                       const char *addon_id,
                                       const short delegate_spacetype,
@@ -461,6 +462,7 @@ static void addon_panel_types_collect(const bContext *C,
  * #BKE_paneltypes_addon_space_types_get returns them - kept from before this parameter
  * existed, so an add-on with only one declared type behaves exactly as it always has.
  */
+/* [impl->arch~single-delegate-per-area~1] */
 static short addon_delegate_spacetype_find(const bContext *C,
                                            const char *addon_id,
                                            const short preferred_spacetype)
@@ -503,6 +505,7 @@ static uint64_t addon_screen_signature_get(const bScreen *screen)
   return signature;
 }
 
+/* [impl->arch~panel-hosting-hook~1] */
 static void addon_main_region_layout(const bContext *C, ARegion *region)
 {
   ScrArea *area_orig = CTX_wm_area(C);

@@ -15,6 +15,14 @@ This fork adds the ability to host add-on panels in real editor areas.
   update the parent `index.md`, and add a record to `log.md`.
 - Full rules: `docs_wiki/CLAUDE.md`.
 
+## Traceability
+- A documented concept carries an ID, and the code that implements it carries
+  a matching tag. Read the concept before you edit a tagged function.
+- Run `tools/oft/fetch_oft.sh` and `tools/oft/install_hook.sh` once per clone.
+- `tools/oft/trace.sh` reports whether the wiki and the code agree. A
+  pre-commit hook runs it.
+- Full rules: `docs_wiki/CLAUDE.md`, rule 1f.
+
 ## Source Tree
 - Blender C/C++ sources are in `source/`. Follow the upstream style in
   `.clang-format` and the handbooks in `docs_wiki/reference/`.

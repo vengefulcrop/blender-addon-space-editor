@@ -1,0 +1,32 @@
+#!/bin/sh
+# Trace the knowledge base against the code, before a commit that touches
+# either one. Install it with:
+#
+#   tools/oft/install_hook.sh
+#
+# Skip it once with:  git commit --no-verify
+ROOT=$(git rev-parse --show-toplevel)
+
+# Only run when this commit touches code or the wiki.
+if ! git diff --cached --name-only | grep -qE '^(source/|scripts/|docs_wiki/)'; then
+  exit 0
+fi
+
+JAR=$(ls "$ROOT"/tools/oft/openfasttrace-*.jar 2>/dev/null | head -1)
+if [ -z "$JAR" ]; then
+  echo "note: OpenFastTrace is missing, skipping the trace."
+  echo "      Run tools/oft/fetch_oft.sh to enable it."
+  exit 0
+fi
+
+if ! "$ROOT/tools/oft/trace.sh" failure_details; then
+  echo ""
+  echo "The documentation and the code disagree. See the report above."
+  echo "  uncovered  a documented concept that no code claims"
+  echo "  outdated   the code claims an older version than the wiki"
+  echo "  orphaned   the code claims an ID that no wiki section defines"
+  echo ""
+  echo "Fix it, or commit with --no-verify if you mean to leave it."
+  exit 1
+fi
+exit 0

@@ -10,6 +10,10 @@ last_updated: 2026-09-12
 
 ## The hook, not a new drawing stack
 
+`arch~panel-hosting-hook~1`
+
+Needs: impl
+
 `ED_region_panels_layout_ex` accepts an arbitrary panel-type list. It does
 not hard-wire to the region's own list, at `area.cc:3439-3367`:
 
@@ -33,6 +37,10 @@ call. See
 for the rejected alternative: a new drawing stack.
 
 ## Panel types must be copied, not re-linked
+
+`arch~panel-type-copy~1`
+
+Needs: impl
 
 `ED_region_panels_layout_ex` walks its list through `PanelType`'s own
 `next`/`prev` fields. Every registered type already belongs to its home

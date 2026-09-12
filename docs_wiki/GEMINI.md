@@ -104,6 +104,112 @@ that says which part is superseded, and leave the recorded decision.
 A line number moves on every rebase. Cite a symbol name first, and a line
 number second.
 
+## 1f. Traceability Tags (OpenFastTrace)
+
+A documented concept carries an ID. The code that implements it carries a
+tag with the same ID. The link is per concept, not per file.
+
+**In the wiki**, under the section heading:
+
+```markdown
+## Single delegate per area, not per panel
+
+`arch~single-delegate-per-area~1`
+
+Needs: impl
+```
+
+**In the code**, on its own line above the function:
+
+```c
+/* [impl->arch~single-delegate-per-area~1] */
+static short addon_delegate_spacetype_find(const bContext *C, ...)
+```
+
+### The routine
+
+**Before you edit a tagged function**, read the concept it names. That tag
+is the direct pointer to the part of the wiki your change affects. Do not
+search for it.
+
+**After you change what the code does**, decide one thing: did the change
+alter the documented meaning?
+- No. Leave the tag as it is.
+- Yes. Update the wiki section, then raise the version in two steps:
+
+```
+python tools/oft/bump.py <id>           raise the wiki, leave the code
+python tools/oft/bump.py <id> --accept  raise the code tags to match
+python tools/oft/bump.py --list         show every concept and its sites
+```
+
+`bump.py <id>` raises the wiki only, then names every code site that still
+claims the old version. Read each site and confirm it still matches the
+concept. Only then run `--accept`. Never skip the review. The version
+exists to force that look.
+
+The reader-facing account is
+[Traceability](./reference/traceability.md).
+
+**When you delete tagged code**, the concept becomes uncovered and the
+trace fails. Either delete the concept from the wiki, or mark the section
+superseded and remove its `Needs: impl` line. See rule 1e.
+
+**When you add a concept to the wiki**, give it an ID and `Needs: impl`
+only when code implements it. A design note with no implementation needs
+no ID.
+
+### Running it
+
+```
+tools/oft/fetch_oft.sh       once per clone, downloads and verifies the jar
+tools/oft/install_hook.sh    once per clone, installs the pre-commit hook
+tools/oft/trace.sh           report failures, exit 1 when work remains
+tools/oft/trace.sh all       report every item
+```
+
+**A pre-commit hook runs the trace.** It fires only on a commit that touches
+`source/`, `scripts/`, or `docs_wiki/`. A commit that breaks the trace is
+refused. Do not reach for `git commit --no-verify` to get past it. Fix the
+item the report names. Use `--no-verify` only when the user tells you to
+leave the mismatch, and say in the commit message that you did.
+
+If the jar is absent the hook prints a note and allows the commit. Run
+`tools/oft/fetch_oft.sh` rather than working without the check.
+
+Four verdicts matter:
+
+| Verdict | Meaning |
+|---|---|
+| covered | The doc and the code agree |
+| uncovered | A documented concept that no code claims |
+| outdated | The code claims an older version than the doc |
+| orphaned | The code claims an ID that no doc defines |
+
+### Before an upstream patch
+
+The tags are not idiomatic Blender. Remove them before you send a patch to
+`projects.blender.org`:
+
+```
+python tools/oft/strip_tags.py --check    report, change nothing
+python tools/oft/strip_tags.py            remove the tag lines
+```
+
+A tag always sits on its own line, so removing the line leaves the
+surrounding comment untouched.
+
+Never put `strip_tags.py --check` in a hook. This fork is meant to carry the
+tags, so the check fails on every commit by design. It is a one-off step
+before an upstream patch.
+
+### What the trace cannot do
+
+The trace does not know that a code change altered a documented meaning.
+Nothing changed on the wiki side, so the trace still passes. Reading the
+tagged concept and judging the change is your work. The tag gives you the
+pointer, not the verdict.
+
 ## 2. Navigation Protocol (Progressive Disclosure)
 - Always start with the root `index.md`.
 - Read the section `index.md` files (for example `architecture/index.md`) to

@@ -91,6 +91,10 @@ accessors and therefore operates on the borrowed editor's real data.
 
 ## Made generic: no core code names this editor
 
+`arch~context-delegation-generic~1`
+
+Needs: impl
+
 `ctx_wm_area_effective()` originally branched on
 `area->spacetype != SPACE_ADDON` before reading the delegate field. The
 field moved to a generic `ScrArea::context_delegate_spacetype`
@@ -220,6 +224,10 @@ harmless when unneeded and correct when needed, and it sidesteps the
 false-positive problem of any `ot->modal != nullptr` classifier.
 
 ## Single delegate per area, not per panel
+
+`arch~single-delegate-per-area~1`
+
+Needs: impl
 
 `addon_delegate_spacetype_find()` resolves one `delegate_spacetype` per
 area, from whichever panel's declared type matches an open editor first

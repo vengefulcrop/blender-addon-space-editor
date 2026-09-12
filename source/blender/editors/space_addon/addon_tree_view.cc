@@ -136,6 +136,7 @@ struct AddonTreeEntry {
   bool is_bundled = false;
 };
 
+/* [impl->arch~sidebar-tree~1] */
 void AddonTreeView::build_tree()
 {
   const bool show_bundled = (U.uiflag2 & USER_ADDON_EDITOR_SHOW_BUNDLED) != 0;

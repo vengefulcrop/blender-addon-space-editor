@@ -969,6 +969,7 @@ ScrArea *CTX_wm_area(const bContext *C)
  * declared type is not open anywhere), so context lookups fail the same way they would
  * for any other area with nothing to resolve.
  */
+/* [impl->arch~context-delegation-generic~1] */
 static ScrArea *ctx_wm_area_effective(const bContext *C)
 {
   ScrArea *area = CTX_wm_area(C);

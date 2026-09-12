@@ -50,6 +50,10 @@ add-on, and they persist across sessions.
 
 ## The Addons tree: `AbstractTreeView`, not a hand-rolled flat list
 
+`arch~sidebar-tree~1`
+
+Needs: impl
+
 Blender has a mature, precedented C++ tree-view widget,
 `AbstractTreeView` / `AbstractTreeViewItem` (`UI_tree_view.hh`), with 15
 real call sites in the tree. These include `asset_catalog_tree_view.cc`,
