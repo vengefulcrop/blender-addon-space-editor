@@ -3,7 +3,7 @@ type: architecture
 title: "Add-on Panel Attribution"
 description: "How the editor decides which add-on owns a given PanelType"
 tags: [architecture, addon-editor, panels, attribution]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Add-on Panel Attribution
@@ -40,6 +40,10 @@ mapping records the state at registration time, and then drifts from the
 actual class table.
 
 ## Attribution moved out of core
+
+`arch~panel-owner-on-demand~1`
+
+Needs: impl
 
 The first working version populated `PanelType::addon_id` by adding a hook
 to `rna_Panel_register` in `makesrna/intern/rna_ui.cc`, calling

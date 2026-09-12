@@ -19,5 +19,11 @@ exec java -jar "$JAR" trace -v "$VERBOSITY" \
   "$ROOT/docs_wiki/decisions" \
   "$ROOT/source/blender/editors/space_addon" \
   "$ROOT/source/blender/makesdna/DNA_space_types.h" \
+  "$ROOT/source/blender/makesdna/DNA_space_enums.h" \
+  "$ROOT/source/blender/blenkernel/intern/screen.cc" \
+  "$ROOT/source/blender/blenkernel/BKE_screen.hh" \
+  "$ROOT/source/blender/blenkernel/BKE_blender_version.h" \
+  "$ROOT/source/blender/blenloader/intern/versioning_530.cc" \
+  "$ROOT/source/blender/editors/screen/area.cc" \
   "$ROOT/source/blender/blenkernel/intern/context.cc" \
   "$ROOT/scripts/startup/bl_ui/space_addon.py"

@@ -104,6 +104,8 @@ std::string addon_display_name(const char *module, bool *r_is_bundled)
 
 /** Sets #SpaceAddon::addon_id and #SpaceAddon::preferred_delegate_spacetype together,
  * from C++ since a tree row activation has no Python operator to call through. */
+/* [impl->arch~tree-row-activation~1] */
+/* [impl->arch~user-chosen-delegate-preference~1] */
 void addon_tree_activate(bContext &C, const char *module, short spacetype)
 {
   ScrArea *area = CTX_wm_area(&C);
@@ -201,6 +203,7 @@ void AddonTreeView::build_tree()
   }
 }
 
+/* [impl->arch~tree-custom-height~1] */
 static void addon_panel_tree_draw(const bContext *C, Panel *panel)
 {
   ui::Layout &layout = *panel->layout;

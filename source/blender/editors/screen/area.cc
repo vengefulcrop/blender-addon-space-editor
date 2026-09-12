@@ -3126,6 +3126,7 @@ BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
  * Re-entrant - a sub-panel's callback nests inside its parent's - because it restores what it
  * saw rather than assuming an un-overridden starting point.
  */
+/* [impl->arch~panel-callback-context-override~1] */
 class ScopedPanelDrawContext {
   bContext *C_ = nullptr;
   ScrArea *area_prev_ = nullptr;
@@ -3165,6 +3166,7 @@ class ScopedPanelDrawContext {
   ScopedPanelDrawContext &operator=(const ScopedPanelDrawContext &) = delete;
 };
 
+/* [impl->arch~panel-callback-context-override~1] */
 static void ed_panel_draw(const bContext *C,
                           ARegion *region,
                           ListBaseT<Panel> *lb,
@@ -3358,6 +3360,7 @@ static void ed_panel_draw(const bContext *C,
 /**
  * Check whether a panel should be added to the region's panel layout.
  */
+/* [impl->arch~panel-callback-context-override~1] */
 static bool panel_add_check(const bContext *C,
                             const WorkSpace *workspace,
                             const char *contexts[],
@@ -3436,6 +3439,7 @@ static int panel_draw_width_from_max_width_get(const ARegion *region,
              max_width;
 }
 
+/* [impl->arch~panel-callback-context-override~1] */
 void ED_region_panels_layout_ex(const bContext *C,
                                 ARegion *region,
                                 ListBaseT<PanelType> *paneltypes,

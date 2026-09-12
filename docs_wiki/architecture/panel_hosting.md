@@ -3,7 +3,7 @@ type: architecture
 title: "Panel Hosting"
 description: "How the Add-on Editor re-hosts an add-on's unmodified panels through ED_region_panels_layout_ex"
 tags: [architecture, addon-editor, panels, region-layout]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Panel Hosting
@@ -58,6 +58,10 @@ when the add-on changes or panel types actually change.
 
 ## Layout and draw must be separate callbacks
 
+`arch~panel-layout-draw-split~1`
+
+Needs: impl
+
 **Symptom**: all widgets in the editor rendered at roughly 0.75 of their
 normal size.
 
@@ -89,6 +93,10 @@ than a narrow sidebar.
 
 ## Collecting panels
 
+`arch~panel-region-scan~1`
+
+Needs: impl
+
 `addon_panel_types_collect` scans the add-on's registered panel types
 and builds the filtered list. Two extensions apply to the initial scan:
 
@@ -109,6 +117,10 @@ and builds the filtered list. Two extensions apply to the initial scan:
   `bl_category` of its own.
 
 ## Delegate-availability filtering
+
+`arch~delegate-availability-filter~1`
+
+Needs: impl
 
 `addon_panel_types_collect` skips a panel at collection time if no editor
 of its declared space type is open anywhere. This matters because some

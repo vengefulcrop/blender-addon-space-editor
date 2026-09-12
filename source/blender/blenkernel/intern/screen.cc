@@ -374,6 +374,7 @@ uint64_t BKE_paneltypes_state_get()
   return g_paneltypes_state;
 }
 
+/* [impl->arch~user-chosen-delegate-preference~1] */
 Vector<short> BKE_paneltypes_addon_space_types_get(const char *addon_id)
 {
   Vector<short> space_types;

@@ -30,6 +30,7 @@ namespace blender {
 
 /* Blender file format version. */
 #define BLENDER_FILE_VERSION BLENDER_VERSION
+/* [impl->arch~file-subversion-raise~1] */
 #define BLENDER_FILE_SUBVERSION 12
 
 /* Minimum Blender version that supports reading file written with the current

@@ -3,12 +3,16 @@ type: architecture
 title: "Sidebar Tree View"
 description: "How the Addons/Bookmarks sidebar is built, and why the Addons tree is a native C++ tree view"
 tags: [architecture, addon-editor, sidebar, tree-view, bookmarks]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Sidebar Tree View
 
 ## Shape
+
+`arch~tree-row-activation~1`
+
+Needs: impl
 
 A left-side sidebar, styled like the File Browser's bookmarks column,
 holds two vertically stacked panels:
@@ -103,6 +107,10 @@ for the full tradeoff.
    region. This is why the versioning bump exists.
 
 ## Follow-up fixes
+
+`arch~tree-custom-height~1`
+
+Needs: impl
 
 - `set_default_rows(8)` on the tree. This is not cosmetic: it is the
   only public way to give the view a custom height, and it gates the

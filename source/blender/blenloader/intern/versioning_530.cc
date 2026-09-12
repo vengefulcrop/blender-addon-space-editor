@@ -202,6 +202,7 @@ void blo_do_versions_530(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
     }
   }
 
+  /* [impl->arch~file-subversion-raise~1] */
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 503, 12)) {
     /* The Add-on editor gained a left sidebar (Bookmarks + Add-ons tree). Areas saved
      * before it existed keep their stored region list verbatim - #ED_area_newspace reuses

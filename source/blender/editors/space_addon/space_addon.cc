@@ -138,6 +138,7 @@ static int /*eContextResult*/ addon_context(const bContext *C,
   return st->context(C, member, result);
 }
 
+/* [impl->arch~space-addon-blend-io~1] */
 static void addon_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
 {
   SpaceAddon *saddon = reinterpret_cast<SpaceAddon *>(sl);
@@ -145,6 +146,7 @@ static void addon_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
   saddon->runtime = MEM_new<SpaceAddon_Runtime>(__func__);
 }
 
+/* [impl->arch~space-addon-blend-io~1] */
 static void addon_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   writer->write_struct_cast<SpaceAddon>(sl);
@@ -295,6 +297,7 @@ static PanelType *addon_paneltype_pop(ListBaseT<PanelType> *lb, const char *idna
  * every other panel registration in Blender free of this editor's own bookkeeping - the
  * attribution only ever needs to be known while this editor is collecting panels.
  */
+/* [impl->arch~panel-owner-on-demand~1] */
 static void addon_panel_owner_get(const PanelType &pt, char *r_addon_id, size_t r_addon_id_maxncpy)
 {
   r_addon_id[0] = '\0';
@@ -332,6 +335,8 @@ static void addon_panel_owner_get(const PanelType &pt, char *r_addon_id, size_t 
  * and the header's info button - see `_addon_supported_spaces()` in `space_addon.py`.
  */
 /* [impl->arch~panel-type-copy~1] */
+/* [impl->arch~panel-region-scan~1] */
+/* [impl->arch~delegate-availability-filter~1] */
 static void addon_panel_types_collect(const bContext *C,
                                       const char *addon_id,
                                       const short delegate_spacetype,
@@ -704,6 +709,8 @@ static void addon_header_region_draw(const bContext *C, ARegion *region)
 /** \name Registration
  * \{ */
 
+/* [impl->arch~single-space-type-menu-entry~1] */
+/* [impl->arch~panel-layout-draw-split~1] */
 void ED_spacetype_addon()
 {
   std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();

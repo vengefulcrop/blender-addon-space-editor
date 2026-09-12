@@ -3,7 +3,7 @@ type: architecture
 title: "Upstream Fragility"
 description: "The two changes in this fork that break silently when upstream moves, and what to check on every rebase"
 tags: [architecture, upstream, rebase, dna, versioning]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Upstream Fragility
@@ -21,6 +21,10 @@ Check both on every rebase onto a newer `main`. See
 commit, the current numbers, and the commands that read the upstream ones.
 
 ## 1. `SPACE_TYPE_NUM` claims enum slot 25
+
+`arch~space-addon-enum-slot~1`
+
+Needs: impl
 
 **What the fork does.** `makesdna/DNA_space_enums.h` adds `SPACE_ADDON = 25`
 and rebases `SPACE_TYPE_NUM` onto it:
@@ -52,6 +56,10 @@ Confirm that `SPACE_ADDON` holds a value no other enumerator holds. Renumber
 [Persistence and Compatibility](./persistence_and_compatibility.md).
 
 ## 2. `BLENDER_FILE_SUBVERSION` is bumped to 12
+
+`arch~file-subversion-raise~1`
+
+Needs: impl
 
 **What the fork does.** `BKE_blender_version.h` raises
 `BLENDER_FILE_SUBVERSION` from 10 to 12. The fork takes two subversion

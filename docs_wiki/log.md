@@ -287,3 +287,15 @@ pyareas OKF knowledge base.
     [sidebar_tree_view.md](./architecture/sidebar_tree_view.md).
   - Marked `ADDON_OT_set_preferred_delegate_spacetype` as removed in
     [ux_addon_picker.md](./design/ux_addon_picker.md), per rule 1e.
+- **2026-09-13** (Agent: Claude Opus 5, with three Sonnet passes):
+  - Raised the traceability coverage from 5 concepts to 18. Every new concept
+    starts at version 1.
+  - Tagged the two rebase constants named in
+    [upstream_fragility.md](./architecture/upstream_fragility.md):
+    `SPACE_ADDON = 25` and the `BLENDER_FILE_SUBVERSION` raise. A rebaser now
+    gets the exact line from the trace.
+  - Extended the scan list in `tools/oft/trace.sh` by six paths, so the trace
+    sees `area.cc`, `screen.cc`, `BKE_screen.hh`, `DNA_space_enums.h`,
+    `BKE_blender_version.h`, and `versioning_530.cc`.
+  - No ADR carries a tag. A decision record documents a choice, not a
+    mechanism.

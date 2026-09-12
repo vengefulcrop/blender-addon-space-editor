@@ -29,6 +29,10 @@ series, not a large refactor.
 
 ## One space type, one menu entry
 
+`arch~single-space-type-menu-entry~1`
+
+Needs: impl
+
 `SPACE_ADDON` is one registered space type. It appears in the editor type
 menu as a single "Add-on" entry, like every other editor. The sidebar
 Add-ons tree chooses which add-on an area hosts.
@@ -59,6 +63,10 @@ unregister-crash risk from a torn-down space type. See
 for the rejected alternative.
 
 ## DNA
+
+`arch~addon-id-by-module-name~1`
+
+Needs: impl
 
 | Field | Location | Purpose |
 |---|---|---|

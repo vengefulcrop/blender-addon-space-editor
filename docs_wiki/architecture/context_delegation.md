@@ -135,6 +135,10 @@ in. `ADDON_HT_header.draw()` (`space_addon.py:108`) follows this rule.
 
 ## Context delegation narrowed to panel callbacks {#context-delegation-narrowed-to-panel-callbacks}
 
+`arch~panel-callback-context-override~1`
+
+Needs: impl
+
 Until this fix, `addon_main_region_layout` swapped `CTX_wm_area` and
 `CTX_wm_region` to the delegate around the entire
 `ED_region_panels_layout_ex` call. This was too coarse, and it produced
@@ -244,6 +248,10 @@ per area. This approach is deterministic, since every panel already
 declares what it needs.
 
 ## User-chosen delegate preference
+
+`arch~user-chosen-delegate-preference~1`
+
+Needs: impl
 
 The automatic "first declared type with an editor open wins" scan gave
 the user no way to see or change the outcome. `SpaceAddon` gained

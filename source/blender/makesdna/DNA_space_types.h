@@ -1356,6 +1356,7 @@ struct SpaceAddon {
    * so such a field reads as set. It resolves to no add-on, and the editor draws the
    * empty state.
    */
+  /* [impl->arch~addon-id-by-module-name~1] */
   char addon_id[128] = {};
 
   /**

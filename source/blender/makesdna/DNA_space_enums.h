@@ -1182,6 +1182,7 @@ enum eSpace_Type : char {
   SPACE_SPREADSHEET = 23,
   SPACE_PROJECT = 24,
   /** Hosts an add-on's panels as a full editor, see #SpaceAddon. */
+  /* [impl->arch~space-addon-enum-slot~1] */
   SPACE_ADDON = 25
 
 #define SPACE_TYPE_NUM (SPACE_ADDON + 1)

@@ -10,6 +10,10 @@ last_updated: 2026-09-13
 
 ## `SpaceAddon` is a normal `SpaceLink`
 
+`arch~space-addon-blend-io~1`
+
+Needs: impl
+
 `SpaceAddon` participates in the same `blend_write`/`blend_read_data`
 machinery as every other space. Which editor an area hosts, and its
 `addon_id`, save as part of the screen layout precisely like any other
