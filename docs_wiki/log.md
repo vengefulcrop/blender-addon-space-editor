@@ -280,3 +280,10 @@ pyareas OKF knowledge base.
   - Corrected six commit citations in
     [todo.md](./operations/todo.md) and [bugfix.md](./operations/bugfix.md).
     The history rewrite of 2026-09-12 changed every commit id.
+- **2026-09-13** (Agent: Claude Opus 5):
+  - Corrected five source comments that named removed machinery, in
+    `addon_tree_view.cc` and `bl_ui/space_addon.py`. One comment pointed at
+    `docs_ui/`, which a clone does not carry. It now points at
+    [sidebar_tree_view.md](./architecture/sidebar_tree_view.md).
+  - Marked `ADDON_OT_set_preferred_delegate_spacetype` as removed in
+    [ux_addon_picker.md](./design/ux_addon_picker.md), per rule 1e.

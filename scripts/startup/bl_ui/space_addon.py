@@ -96,8 +96,7 @@ def _addon_supported_spaces(addon_id):
     panels declare - space_type is the raw Area.type identifier (e.g. 'NODE_EDITOR'),
     the same one #SpaceAddon.preferred_delegate_spacetype's items use.
 
-    Computed independently here in Python because every consumer of this list - the
-    header's info button, the editor-type picker, and the empty-state panel below - is
+    Computed independently here in Python because every consumer of this list is
     Python-drawn, and none of them need anything the C++ side doesn't already expose
     more simply than a new RNA collection would.
     """

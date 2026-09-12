@@ -121,7 +121,8 @@ for the user to see or change the outcome.
    and the request was to prefix each with the add-on's own name
    ("Lumos: UV/Image Editor"), which a directly-drawn property cannot
    customize per item.
-3. **Selected design**: `ADDON_OT_set_preferred_delegate_spacetype`, a
+3. **Selected design**, now removed: `ADDON_OT_set_preferred_delegate_spacetype`
+   no longer exists. Commit `5add1f67281` deleted it. It was a
    small Python operator with its own dynamic `items` callback (the same
    idiom the now-removed `ADDON_OT_pick_and_host` already used), drawn via
    `layout.operator_menu_enum()`. The real, C-defined property stays the

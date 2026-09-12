@@ -8,14 +8,13 @@
  * Hierarchical "Addons" tree for the Add-on Editor's left sidebar: one row per enabled
  * add-on that registers any panels at all, expanding to one child row per distinct
  * editor type (#eSpace_Type) its panels target. Selecting a child row hosts that
- * add-on/space-type combination in the same area, the same net effect as picking it
- * from the header's editor-type drop-down.
+ * add-on/space-type combination in the same area.
  *
  * Modeled directly on `space_file/asset_catalog_tree_view.cc`'s
  * `AssetCatalogTreeView`, trimmed to what this read-only tree needs: no drag/drop,
  * rename, or context menu, since - unlike asset catalogs - add-on/panel-set rows
- * aren't user-editable. See docs_ui/addon_space_editor_ux_redesign.md for why this is
- * a contained clone rather than a generic Python-facing tree API.
+ * aren't user-editable. See docs_wiki/architecture/sidebar_tree_view.md for why this
+ * is a contained clone rather than a generic Python-facing tree API.
  */
 
 #include <memory>
@@ -59,8 +58,8 @@ namespace blender {
 
 namespace {
 
-/** Name + icon for a plain #eSpace_Type value, straight from the same enum the header's
- * editor-type drop-down and #SpaceAddon::preferred_delegate_spacetype both use. */
+/** Name + icon for a plain #eSpace_Type value, straight from the same enum
+ * #SpaceAddon::preferred_delegate_spacetype uses. */
 void space_type_name_and_icon(short spacetype, const char **r_name, int *r_icon)
 {
   for (const EnumPropertyItem *item = rna_enum_space_type_items; item->identifier; item++) {
@@ -78,13 +77,11 @@ void space_type_name_and_icon(short spacetype, const char **r_name, int *r_icon)
  *
  * The module id is never shown directly when anything better is available: for an
  * extension it is the full `bl_ext.<repository>.<addon>` import path, which is not a
- * name (the same reason #AddonEditorEntry::label exists rather than using
+ * name (the same reason #bAddonEditor::name exists rather than using
  * #bAddonEditor::module - see `space_addon.cc`).
  *
- * Prefers the curated #bAddonEditor::name when the add-on has an entry - that is the
- * label the user already sees for it in the editor-type drop-down, so the two agree -
- * and otherwise asks Python for `bl_info["name"]`, exactly as the "Add an Add-on"
- * picker does via `_addon_label()` (`space_addon.py`). */
+ * Prefers #bAddonEditor::name when the add-on has an entry, and otherwise asks Python
+ * for `bl_info["name"]` through `_addon_label()` (`space_addon.py`). */
 std::string addon_display_name(const char *module, bool *r_is_bundled)
 {
   if (r_is_bundled != nullptr) {
@@ -105,9 +102,8 @@ std::string addon_display_name(const char *module, bool *r_is_bundled)
   return (label[0] != '\0') ? label : module;
 }
 
-/** Applies the same area/space mutation as
- * `ADDON_OT_set_preferred_delegate_spacetype.execute()` (`space_addon.py`), from C++
- * since a tree row activation has no Python operator to call through. */
+/** Sets #SpaceAddon::addon_id and #SpaceAddon::preferred_delegate_spacetype together,
+ * from C++ since a tree row activation has no Python operator to call through. */
 void addon_tree_activate(bContext &C, const char *module, short spacetype)
 {
   ScrArea *area = CTX_wm_area(&C);
