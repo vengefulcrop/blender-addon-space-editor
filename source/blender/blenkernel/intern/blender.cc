@@ -376,6 +376,7 @@ void BKE_blender_userdef_data_free(UserDef *userdef, bool clear_fonts)
   }
 
   userdef->addon_editors.free_no_destruct();
+  userdef->addon_bookmarks.free_no_destruct();
   userdef->autoexec_paths.free_no_destruct();
   userdef->script_directories.free_no_destruct();
   userdef->asset_libraries.free_no_destruct();
@@ -440,9 +441,11 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
   VALUE_SWAP(uifonts);
   VALUE_SWAP(themes);
   VALUE_SWAP(addons);
-  /* Swapped alongside #UserDef::addons, which it mirrors: an app template brings its own
-   * set of enabled add-ons, so the editors curated against them travel together. */
+  /* Swapped alongside #UserDef::addons, which they mirror: an app template brings its own
+   * set of enabled add-ons, so the editors and the bookmarks curated against them travel
+   * together. */
   VALUE_SWAP(addon_editors);
+  VALUE_SWAP(addon_bookmarks);
   VALUE_SWAP(user_keymaps);
   VALUE_SWAP(user_keyconfig_prefs);
 
