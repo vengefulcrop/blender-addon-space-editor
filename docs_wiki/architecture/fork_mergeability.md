@@ -11,14 +11,7 @@ last_updated: 2026-09-13
 ## Distribution goal
 
 The fork ships as a git branch on top of upstream `main`, not as a patch
-file. A second developer adds this repository as a remote, fetches the
-branch, and rebases the commits onto their own base. Git carries the
-history, the base commit, and the ability to rebase, which a patch file
-throws away.
-
-This sets a constraint on the design. The commit series must stay small,
-reviewable, and rebasable against upstream `main`. It must not become a
-large refactor.
+file. 
 
 ## File-level touches, as of the point this was last measured
 
