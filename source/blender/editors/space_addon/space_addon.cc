@@ -8,8 +8,8 @@
  * Editor that hosts the panels of a single add-on or extension.
  *
  * The add-on is identified by the module name stored in #SpaceAddon::addon_id. This
- * file provides the space type skeleton only; panel collection and drawing of the
- * hosted add-on's panels are added in a later step.
+ * file provides the space type, the panel collection, the region layout, and the
+ * context delegation to the editor each hosted panel was written for.
  */
 
 #include "DNA_space_types.h"

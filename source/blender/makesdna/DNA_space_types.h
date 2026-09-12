@@ -1352,8 +1352,9 @@ struct SpaceAddon {
    *
    * Always a plain module name. The tree view in the sidebar writes it directly.
    * A file saved by an early build of this fork can hold a leading 0x01 byte here,
-   * left by the removed curated-list picker. That byte matches no module name, so the
-   * editor treats the field as unset.
+   * left by the removed curated-list picker. Emptiness is tested as `addon_id[0] == 0`,
+   * so such a field reads as set. It resolves to no add-on, and the editor draws the
+   * empty state.
    */
   char addon_id[128] = {};
 
