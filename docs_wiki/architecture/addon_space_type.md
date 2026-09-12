@@ -22,23 +22,30 @@ The fork publishes its diff so a user can compile a personal build. This
 constrains the design: it must stay a small, reviewable, rebasable patch
 series against upstream `main`, not a large refactor.
 
-## One space type, many subtypes
+## One space type, one menu entry
 
-`SPACE_ADDON` is one registered space type. Every hosted add-on is a
-subtype of it, not a separate space type. `SpaceType` already carries a
-subtype mechanism, at `BKE_screen.hh:156-158`:
+`SPACE_ADDON` is one registered space type. It appears in the editor type
+menu as a single "Add-on" entry, like every other editor. The sidebar
+Add-ons tree chooses which add-on an area hosts.
 
-```cpp
-int  (*space_subtype_get)(ScrArea *area);
-void (*space_subtype_set)(ScrArea *area, int value);
-void (*space_subtype_item_extend)(bContext *C, EnumPropertyItem **item, int *totitem);
-```
+`space_addon.cc:719-725` sets no `SpaceType::space_subtype_get`,
+`space_subtype_set`, or `space_subtype_item_extend`. Leaving
+`space_subtype_item_extend` unset is what puts the plain "Add-on" entry in
+the menu, because defining that callback suppresses a space type's own
+entry in `rna_Area_ui_type_itemf`.
 
-`rna_Area_ui_type_itemf` folds subtypes into the editor dropdown, at
-`rna_screen.cc:216-233`. The code packs the enum value as
-`space_type << 16 | subtype`. This is the same mechanism the Node Editor
-uses to present Shader, Compositor, and Geometry Nodes as three separate
-dropdown entries while being one registered space type.
+`AddonTreeView::build_tree` (`addon_tree_view.cc:139`) lists every enabled
+add-on that registers panels. Activating a row writes the module name into
+`SpaceAddon::addon_id` (`addon_tree_view.cc:118`).
+
+**Superseded design.** An earlier version used the `SpaceType` subtype
+mechanism at `BKE_screen.hh:156-158`, and added one menu entry per curated
+add-on plus an "Add an Add-on..." picker. The enum packed as
+`space_type << 16 | subtype`, the way the Node Editor presents Shader,
+Compositor, and Geometry Nodes. The tree view replaced all of it. The
+symbols `ADDON_SUBTYPE_PICK` and `addon_space_subtype_get` no longer exist.
+See [ADR-006](../decisions/adr_006_curated_addon_list_vs_auto_derived.md)
+and [ADR-007](../decisions/adr_007_native_tree_view_vs_flat_list.md).
 
 The system creates or destroys no `SpaceType` at runtime, and there is no
 dynamic registration, no runtime `SpaceType` allocation, and no
@@ -52,25 +59,23 @@ for the rejected alternative.
 |---|---|---|
 | `SPACE_ADDON` enum value | `makesdna/DNA_space_enums.h` | The one registered space type. |
 | `SpaceAddon { SpaceLink; char addon_id[128]; }` | `makesdna/DNA_space_types.h` | Per-area state: which add-on this area hosts. |
-| `UserDef.addon_editors` (`bAddonEditor` list) | `makesdna/DNA_userdef_types.h` | Persistent, user-curated list of add-ons offered in the editor dropdown. Mirrors the existing `bAddon` pattern. |
+| `UserDef.addon_editors` (`bAddonEditor` list) | `makesdna/DNA_userdef_types.h` | A display name override, read only. Nothing fills it now. The picker that filled it was removed. |
 
-`ScrArea::spacetype` subtype indices are not stable across sessions,
-because add-on enable/disable reorders them. The index is a view concern
-only. The DNA stores the add-on's module name as a string,
-`SpaceAddon::addon_id`. This mirrors the Node Editor, which stores the
-node-tree type idname in `SpaceNode` and resolves it to an index in
-`space_subtype_get`.
+The DNA stores the add-on's module name as a string,
+`SpaceAddon::addon_id`, not an index. An index is not stable across
+sessions, because enabling or disabling an add-on reorders them. This
+mirrors the Node Editor, which stores the node tree type idname in
+`SpaceNode`.
 
 ## Data flow
 
 ```
-UserDef.addon_editors            persistent, survives .blend files
-  └─ "mytool", "node_wrangler"   add-ons the user activated as editors
+editor type menu (rna_Area_ui_type_itemf)
+  └─ one plain "Add-on" entry, no subtypes
 
-editor dropdown  (rna_Area_ui_type_itemf)
-  └─ addon_space_subtype_item_extend()
-       ├─ one entry per UserDef.addon_editors
-       └─ "Add an Add-on..."  → opens a search popup over installed add-ons
+sidebar Add-ons tree (AddonTreeView::build_tree)
+  └─ every enabled add-on in U.addons that registers panels
+       └─ activating a row writes SpaceAddon::addon_id
 
 ScrArea (spacetype = SPACE_ADDON)
   └─ SpaceAddon.addon_id = "mytool"          ← stored in DNA, not the index
@@ -95,28 +100,27 @@ step.
 | 1 | `SPACE_ADDON` enum value; `SpaceAddon` struct | `makesdna/DNA_space_enums.h`, `makesdna/DNA_space_types.h` |
 | 2 | `UserDef.addon_editors` list and RNA | `makesdna/DNA_userdef_types.h`, `makesrna/intern/rna_userdef.cc` |
 | 3 | Editor module: space callbacks, region init/draw, context delegation | `editors/space_addon/` (new) |
-| 4 | `space_subtype_get` / `_set` / `_item_extend`, including the "Add an Add-on..." entry | `editors/space_addon/space_addon.cc` |
+| 4 | Sidebar tree view that chooses the hosted add-on | `editors/space_addon/addon_tree_view.cc` (new) |
 | 5 | Register the new space type in the editor init table | `editors/include/ED_space_api.hh`, `editors/space_api/spacetypes.cc` |
 
-## Sentinel values
+## Sentinel values, superseded
 
-The editor-type dropdown packs `space_type << 16 | subtype` into one enum
-value (see above). Two sentinel values matter for this packing:
+This section described the enum packing of the removed subtype mechanism.
+The code no longer packs `space_type << 16 | subtype` for this editor, and
+`ADDON_SUBTYPE_PICK` no longer exists. The record stays because the
+`0x7FFF` sentinel caused a shipped defect, and the reasoning applies to any
+future use of the packing.
 
 - `ScrArea::butspacetype_subtype == -1` is Blender's own reserved value
   meaning "not yet determined, call `space_subtype_get()`"
-  (`area.cc:2952`). The "Add an Add-on..." entry must not reuse `-1`: it
-  would never reach the `set` callback, and the packing leaves its bit
-  pattern unchanged, which would decode back to an invalid space type.
-- The fork uses `0x7FFF` — the maximum value the `short` subtype field can
-  hold — for the "Add an Add-on..." entry (`ADDON_SUBTYPE_PICK`), verified
-  against both the packing and unpacking code.
-- `addon_space_subtype_get()`'s fallback (nothing selected, or the
-  filtering rules remove the selected entry) also returns
-  `ADDON_SUBTYPE_PICK` rather than `0`. Returning `0` collided with the
-  "Add-ons" heading item, which also decodes to value `0` after the
-  `SPACE_ADDON << 16` OR, and produced a blank area-type button icon.
-  `ADDON_SUBTYPE_PICK` has a real icon (`ICON_ADD`) and is collision-free.
+  (`area.cc:2961`). A picker entry must not reuse `-1`. It would never
+  reach the `set` callback, and the packing leaves its bit pattern
+  unchanged, which decodes back to an invalid space type.
+- The fork used `0x7FFF`, the maximum a `short` subtype field holds, for
+  the "Add an Add-on..." entry.
+- The `get` fallback returned that sentinel rather than `0`. Returning `0`
+  collided with the "Add-ons" heading item, which also decodes to `0` after
+  the `SPACE_ADDON << 16` OR, and produced a blank area type button icon.
 
 ## Extension module identity
 

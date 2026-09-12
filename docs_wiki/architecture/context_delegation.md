@@ -61,7 +61,7 @@ insufficient before the next.
 
 The original idea was a `SpaceType.context` callback on `SpaceAddon`.
 This does not work: `CTX_wm_space_data` reads `area->spacedata.first`
-directly with no hook point (`context.cc:959-963`), so a context
+directly with no hook point (`context.cc:990-993`), so a context
 callback cannot intercept it.
 
 The first working attempt swapped the context's area and region for a
@@ -129,7 +129,7 @@ is currently drawing: header, panel, or anything else.
 `preferred_delegate_spacetype`), whether the editor's own code or a
 hosted add-on's, must read it via `context.area.spaces.active`, never
 `context.space_data`, regardless of which region or callback it runs
-in. `ADDON_HT_header.draw()` (`space_addon.py:199`) follows this rule.
+in. `ADDON_HT_header.draw()` (`space_addon.py:108`) follows this rule.
 
 ## Context delegation narrowed to panel callbacks {#context-delegation-narrowed-to-panel-callbacks}
 
@@ -277,7 +277,7 @@ treat as a fallback layer, not the primary mechanism.
 
 **The safety property to hold**: delegation must only ever resolve to a
 real, currently open, on-screen editor, via `BKE_screen_find_big_area`
-(`space_addon.cc:242`). No mechanism in this design fabricates or
+(`space_addon.cc:474`). No mechanism in this design fabricates or
 reconstructs context without a visible backing editor. If nothing
 matches, delegation returns null and the operator polls false, the same
 as today. Extending delegation to probe multiple real open editors does

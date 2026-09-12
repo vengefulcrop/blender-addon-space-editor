@@ -18,10 +18,10 @@ state.
 
 1. [ ] Extract the panel-scan walk into one shared helper. The walk (skip
    `SPACE_ADDON`, iterate `RGN_TYPE_UI`/`RGN_TYPE_WINDOW`, skip
-   sub-panels, resolve owner, compare) exists in three places:
-   `addon_panel_types_collect`, `addon_has_registered_panels` (both in
-   `space_addon.cc`), and `BKE_paneltypes_addon_space_types_get`
-   (`screen.cc`).
+   sub-panels, resolve owner, compare) was recorded in three places. Two
+   of them exist: `addon_panel_types_collect` (`space_addon.cc`) and
+   `BKE_paneltypes_addon_space_types_get` (`screen.cc`). The third name,
+   `addon_has_registered_panels`, does not exist in the code.
 
 2. [ ] Share a named constant for `"ADDON_PT_empty_state"`. The code
    hardcodes the literal string independently in `space_addon.cc:178`,
@@ -247,7 +247,8 @@ state.
     - The write, `saddon->addon_id[0] = SPACE_ADDON_ID_PICK_MARKER;`, in
       `rna_Area_ui_type_set`.
     - The read, the marker test in `rna_Area_ui_type_update` that called
-      `ADDON_OT_pick_and_host`.
+      `ADDON_OT_pick_and_host`, a symbol also now deleted along with the rest
+      of the picker.
 
     Two dead references survived in
     `source/blender/makesdna/DNA_space_types.h`. Both are now gone:

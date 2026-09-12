@@ -24,8 +24,8 @@ for `bAddonEditor`.
 **Consequence.** The curated editor list did not survive a restart. Worse,
 the raw `UserDef` struct was still written, including the `ListBase`
 head/tail pointers, which are live in-memory addresses never remapped on
-read. Iterating `U.addon_editors` in `addon_ids_get()`
-(`space_addon.cc:462`) after such a load dereferenced stale pointers,
+read. Iterating `U.addon_editors` in `addon_display_name`
+(`addon_tree_view.cc:99`) after such a load dereferenced stale pointers,
 which is a crash, not a lost setting.
 
 **Fix.** Added the write loop in `writefile.cc`, the
@@ -41,8 +41,8 @@ module, name, order, and flag intact.
 
 ## 2. Reused userpref flag bit was unsafe — FIXED
 
-**Symptom.** `USER_ADDON_EDITOR_SHOW_BUNDLED` reused
-`USER_UIFLAG2_UNUSED_2` (`DNA_userdef_types.h:412`). The bit previously
+**Symptom.** `USER_ADDON_EDITOR_SHOW_BUNDLED` reused bit `1 << 2` of
+`eUserpref_UI_Flag2` (`DNA_userdef_types.h:200`). The bit previously
 held `USER_TRACKPAD_NATURAL` until commit `055ed335a11` (November 2020,
 2.92 development) removed that preference and renamed the bit without
 adding a versioning clear.
@@ -51,9 +51,14 @@ adding a versioning clear.
 Natural Trackpad enabled still has bit 2 set, and would get
 `show_addon_editor_bundled` silently turned on.
 
-**Fix.** Bumped `BLENDER_FILE_SUBVERSION` to 11 and added a
-`!USER_VERSION_ATLEAST(503, 11)` block in `versioning_userdef.cc` that
-clears the bit, plus a `/* cleared */` annotation on the enum.
+**Fix.** Raised `BLENDER_FILE_SUBVERSION` to 11 and added a
+`!USER_VERSION_ATLEAST(503, 11)` block in `versioning_userdef.cc:1797`
+that clears the bit, plus a `/* cleared */` annotation on the enum.
+
+The define now reads 12. A later, unrelated change raised it again. The
+gate for this fix stays at `503, 11`. See
+[Upstream Fragility](../architecture/upstream_fragility.md) for the
+collision risk that the two numbers carry.
 
 **Verification gap.** Not verified at runtime. This needs a
 `userpref.blend` written by a pre-2.92 Blender with Natural Trackpad
@@ -87,7 +92,7 @@ registered classes.
 
 **Symptom.** Panel layout persistence (`bScreen` to `ScrArea` to
 `SpaceLink` plus regions) worked for saving, since `write_area`
-(`screen.cc:1412`) calls `write_panel_list` unconditionally for every
+(`screen.cc:1454`) calls `write_panel_list` unconditionally for every
 space type. The interface then discarded the layout on the first redraw.
 
 **Suspected cause.** `addon_blend_read_data` allocates a fresh
@@ -113,7 +118,7 @@ required no DNA recompile and took 1m07s.
 
 **Remaining caveat.** A `.blend` or workspace containing an Add-on editor
 opened in stock Blender degrades the unregistered space type to
-`SPACE_EMPTY` (`screen.cc:1620`) and stashes the original in
+`SPACE_EMPTY` (`screen.cc:1668-1672`) and stashes the original in
 `butspacetype`. There is no crash, but `SpaceAddon` is an unknown DNA
 struct there, so the file loses `addon_id` if that user resaves. Workspace
 presets are one-way.
@@ -141,6 +146,8 @@ the 3D Viewport. With the viewport closed, collection gathered only its
 `NODE_EDITOR` panels, and the delegate was `NODE_EDITOR`. Reopening the
 viewport brought the `VIEW_3D` panels back into collection, and
 `addon_context_delegate_find` returned the first match, now `VIEW_3D`.
+That symbol no longer exists. Fix (A) below names the function that
+replaced it.
 `NODE_PT_YPaintUI.poll()` then ran against a `SpaceView3D`, accessed
 `context.space_data` unguarded, and raised on every redraw.
 

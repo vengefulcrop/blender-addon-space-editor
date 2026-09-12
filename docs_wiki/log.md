@@ -153,3 +153,29 @@ pyareas OKF knowledge base.
     [tools/sync_agent_rules.py](./tools/sync_agent_rules.py). `CLAUDE.md` is
     now the source of truth. The script generates `GEMINI.md` from it, and
     `--check` reports drift.
+
+- **2026-09-12** (Agent: Claude Opus 5, wiki and code agreement audit):
+  - Rewrote three sections of
+    [addon_space_type.md](./architecture/addon_space_type.md). They described
+    the `SpaceType` subtype mechanism, which the sidebar tree replaced. The
+    symbols `ADDON_SUBTYPE_PICK` and `addon_space_subtype_get` do not exist.
+  - Marked the subtype half of
+    [ADR-001](./decisions/adr_001_addon_space_type_vs_dynamic_registration.md)
+    as superseded. The core decision holds.
+  - Corrected 9 code citations that pointed at the wrong function.
+  - Corrected two claims in [bugfix.md](./operations/bugfix.md): the flag bit
+    location, and the subversion number, which now reads 12 after a later
+    change.
+
+- **2026-09-12** (Agent: Claude Opus 5 and two Claude Sonnet agents):
+  - Added rule 1e to `CLAUDE.md` and `GEMINI.md`: deleting code means
+    deleting its documentation, in the same commit.
+  - Added [tools/check_references.py](./tools/check_references.py). It finds
+    a symbol this fork owns that no longer exists, and a citation whose line
+    is past the end of the file.
+  - Fixed the 18 dead references the checker found, across 7 files. An
+    architecture doc states the current mechanism. An ADR keeps its decision
+    and gains a status line. A defect record keeps its history and marks the
+    dead symbol.
+  - Recorded in [testing.md](./operations/testing.md) that the three test
+    scripts are not distributed.

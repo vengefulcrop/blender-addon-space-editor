@@ -30,26 +30,18 @@ See [Capping the Editor-Type Menu](../decisions/adr_008_capping_editor_type_menu
 Disabling an add-on unregisters its classes, so a curated entry for it can
 never draw anything until it is re-enabled.
 
-- **Curated dropdown**: `addon_ids_get()` (`space_addon.cc`) filters
-  `UserDef.addon_editors` through `addon_has_registered_panels()` — does
-  at least one currently-registered top-level `PanelType` have this
-  `addon_id` — before returning entries to `get`/`set`/`item_extend`. This
-  reuses the same attribution mechanism `addon_panel_types_collect` already
-  uses for the active add-on, and needs no cross-language call.
+- **Sidebar tree**: `AddonTreeView::build_tree()`
+  (`addon_tree_view.cc`) lists an add-on only when
+  `BKE_paneltypes_addon_space_types_get()` returns at least one entry for
+  its module. Disabling an add-on unregisters its panel types, so the call
+  returns empty and the tree drops the row until the add-on is re-enabled.
 
-- **Picker**: `_installed_addon_items()` (`space_addon.py`) filters
-  separately, by `addon_utils.check(module_name)[1]` (`loaded_state`),
-  since picking a disabled add-on would add a curated entry the dropdown
-  filter then immediately hides.
-
-**Accepted cosmetic tradeoff.** `get`/`set`/`item_extend` share one
-filtered list, since enum values are indices into it. If the area
-currently hosting a since-disabled add-on has that add-on hidden from the
-filtered list, `addon_space_subtype_get` cannot find it and falls back to
-`ADDON_SUBTYPE_PICK` (see [Add-on Space Type](./addon_space_type.md)), so
-the dropdown's highlight can show the wrong entry. `SpaceAddon::addon_id`
-itself remains untouched, so the region's own content resolution stays correct.
-The highlight is cosmetic and does not propagate invalid state.
+`SpaceAddon::addon_id` itself remains untouched when the tree hides the
+row for a since-disabled add-on, so the region's own content resolution
+stays correct. There is no editor-type dropdown enum to desync against the
+tree, since `ED_spacetype_addon()` sets no `space_subtype_get`,
+`space_subtype_set`, or `space_subtype_item_extend`
+(`space_addon.cc:719-725`).
 
 ## `.blend` fallback when the add-on is absent
 
@@ -85,7 +77,7 @@ does not corrupt unrelated data.
 
 Opening a fork-saved file elsewhere is safe (above). Resaving it from
 there causes real, silent data loss, per the actual write path
-(`BKE_screen_area_map_blend_write`, `blenkernel/intern/screen.cc:1435-1444`):
+(`BKE_screen_area_map_blend_write`, `blenkernel/intern/screen.cc:1493`):
 
 ```cpp
 for (SpaceLink &sl : area->spacedata) {
@@ -167,7 +159,8 @@ separate rebuild from `addon_editors`) can crash on startup if an
 intermediate shape saved a persisted `userpref.blend` and a later shape
 read it back: an uninitialized `bAddonEditor::module` string crashes
 
-`strlen()` inside `addon_ids_get()`. This is not a defect a clean install
+`strlen()` inside `addon_display_name()` (`addon_tree_view.cc`). This is
+not a defect a clean install
 hits, since a fresh install has no old-shaped `userpref.blend` to read. If
 it recurs, move `%APPDATA%\Blender Foundation\Blender\5.3\config\userpref.blend`
 aside and relaunch, or launch with `--factory-startup` while `UserDef`'s

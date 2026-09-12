@@ -8,6 +8,17 @@ last_updated: 2026-09-12
 
 # ADR 008: Capping the Editor-Type Menu without Capping Curation
 
+**Status: accepted, and the enforcement point is superseded.**
+
+`UserDef.addon_editor_max_visible` still exists in DNA, but nothing reads
+it. There is no editor-type menu of curated entries to cap. The
+`ADDON_OT_pick_and_host` operator that used to report the cap no longer
+exists: the sidebar tree (`AddonTreeView::build_tree`, `addon_tree_view.cc`)
+lists every enabled add-on that registers panels, uncapped. See
+[ADR-007](./adr_007_native_tree_view_vs_flat_list.md).
+
+The text below records the decision as it stood.
+
 ## Context
 
 Once the curated add-on list had no upper bound in practice, the question
@@ -28,8 +39,9 @@ entry opening a search popup over the full curated list. Three constraints ended
 3. A full list never blocks the user from picking an add-on.
 
 **What shipped**: `UserDef.addon_editor_max_visible` (0 = no cap) limits
-how many entries `addon_ids_get()` returns for the menu, in the order they
-were added — natural `ListBase` order, not alphabetical or by recency.
+how many entries `addon_ids_get()` (a symbol that does not exist under
+that name) returns for the menu, in the order they were added — natural
+`ListBase` order, not alphabetical or by recency.
 
 ## Alternatives considered
 
@@ -40,15 +52,16 @@ were added — natural `ListBase` order, not alphabetical or by recency.
 
 - No new per-entry state: no `last_used_time`, no DNA growth on
   `bAddonEditor`, no second picker operator.
-- The cap only ever shortens what `addon_ids_get()` returns.
+- The cap only ever shortens what `addon_ids_get()` (does not exist under
+  that name) returns.
   The cap never trims, reorders, or otherwise touches
   `UserDef.addon_editors`. An entry past the cap stays curated and editable
   in Preferences.
-- `ADDON_OT_pick_and_host` adds an entry and switches the area to host it
-  unconditionally, regardless of the cap. If the addition pushes the count
-  past the cap, the operator reports a standard `{'INFO'}` message naming
-  the add-on and where to manage it, rather than hiding it with no
-  feedback.
+- `ADDON_OT_pick_and_host` (deleted) adds an entry and switches the area to
+  host it unconditionally, regardless of the cap. If the addition pushes
+  the count past the cap, the operator reports a standard `{'INFO'}`
+  message naming the add-on and where to manage it, rather than hiding it
+  with no feedback.
 
 ## Related
 

@@ -16,7 +16,7 @@ Estimated at ~450-600 LOC, this was the largest single item in that design total
 
 ## Decision
 
-Pass a filtered `ListBaseT<PanelType>` of the chosen add-on panels into the existing `ED_region_panels_layout_ex()`, at `area.cc:3362-3367`.
+Pass a filtered `ListBaseT<PanelType>` of the chosen add-on panels into the existing `ED_region_panels_layout_ex()`, at `area.cc:3439-3367`.
 This function already accepts an arbitrary panel-type list rather than being hard-wired to a region list.
 The Properties editor already exploits this to swap panel sets per tab (`space_buttons.cc:315`).
 

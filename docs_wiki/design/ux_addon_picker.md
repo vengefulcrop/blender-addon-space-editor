@@ -8,6 +8,11 @@ last_updated: 2026-09-12
 
 # UX: Editor-Type Picker
 
+**Status: removed.** This fork deleted the curated-list picker described
+below. A sidebar tree view replaced it; see `addon_tree_view.cc` and
+[Sidebar Tree View](../architecture/sidebar_tree_view.md). The rest of this
+page is the design record of the removed picker, kept for its rationale.
+
 ## The curated list, not an auto-derived list
 
 The editor-type dropdown does not list every add-on that happens to
@@ -16,9 +21,9 @@ and shrink as users toggled unrelated add-ons, with no way to remove an
 unwanted entry.
 
 Instead, `UserDef.addon_editors` is a persistent, user-curated list. The
-editor dropdown has an "Add-ons" heading and a first entry,
-"Add an Add-on...", opening a search popup (`ADDON_OT_pick_and_host`) over
-installed add-ons. Picking one adds it to the curated list and hosts it
+editor dropdown had an "Add-ons" heading and a first entry,
+"Add an Add-on...", opening a search popup (`ADDON_OT_pick_and_host`, deleted along with the rest of this design) over installed
+add-ons. Picking one adds it to the curated list and hosts it
 immediately. The same list is manageable from Preferences > Add-ons, via a
 panel and a `UIList`, so curation is not dropdown-only. See
 [Curated Add-on List vs Auto-Derived List](../decisions/adr_006_curated_addon_list_vs_auto_derived.md).
@@ -40,8 +45,9 @@ add-ons remained unaffected, since their module id already reads as a name
 **Fix**: `bAddonEditor` gained a `name` field, captured once via
 `addon_utils.module_bl_info()` when the picker operator adds the entry,
 not resolved live at draw time, since only Python can resolve `bl_info`/
-manifest data and C builds the dropdown. `addon_ids_get()` returns
-`id`/`label` pairs. The identifier used for matching stays the module id,
+manifest data and C builds the dropdown. `addon_ids_get()` does not exist
+anywhere in this repository. The name is a documentation error, not a
+deleted function. It returned `id`/`label` pairs. The identifier used for matching stays the module id,
 and only the displayed text changes. Sorting moved from module-id order to
 label order, since that is what is visible in the menu.
 
@@ -90,7 +96,7 @@ control only when the user wants it to (a preference, not forced), and a
 full list must never block picking an add-on.
 
 **What shipped**: `UserDef.addon_editor_max_visible` (0 = no cap) limits
-how many entries ddon_ids_get() returns for the menu, in the order the user
+how many entries the picker's item-list callback returned for the menu, in the order the user
 added them. The system never trims, reorders, or
 otherwise touches UserDef.addon_editors itself under the cap. Picking always works regardless of the cap.
 If an addition pushes the count past it, the operator reports a standard
@@ -115,7 +121,7 @@ for the user to see or change the outcome.
    customize per item.
 3. **Selected design**: `ADDON_OT_set_preferred_delegate_spacetype`, a
    small Python operator with its own dynamic `items` callback (the same
-   idiom `ADDON_OT_pick_and_host` already uses), drawn via
+   idiom the now-removed `ADDON_OT_pick_and_host` already used), drawn via
    `layout.operator_menu_enum()`. The real, C-defined property stays the
    single source of truth for storage and resolution. Only its
    presentation moved to Python.
@@ -127,3 +133,4 @@ for the storage and resolution mechanism this UI controls.
 
 - [Add-on Space Type](../architecture/addon_space_type.md)
 - [UX: Sidebar and Bookmarks](./ux_sidebar_bookmarks.md)
+- [Sidebar Tree View](../architecture/sidebar_tree_view.md)

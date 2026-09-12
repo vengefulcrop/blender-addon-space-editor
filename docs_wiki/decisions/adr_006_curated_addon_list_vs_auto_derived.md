@@ -8,6 +8,16 @@ last_updated: 2026-09-12
 
 # ADR 006: Curated Add-on List vs Auto-Derived List
 
+**Status: accepted, and the picker half is superseded.**
+
+The list stays user-curated in `UserDef.addon_editors`. The search-popup
+picker operator, `ADDON_OT_pick_and_host`, no longer exists. A sidebar tree view
+(`AddonTreeView::build_tree`, `addon_tree_view.cc`) lists every enabled
+add-on that registers panels, and a row click hosts it. See
+[ADR-007](./adr_007_native_tree_view_vs_flat_list.md).
+
+The text below records the decision as it stood.
+
 ## Context
 
 The original plan used a cheap derivation. It listed every add-on that
@@ -19,7 +29,8 @@ replaced it.
 `UserDef.addon_editors` (a new `bAddonEditor` list, mirroring the existing
 `bAddon` pattern) is a persistent, user-curated list. The editor dropdown
 gets an "Add-ons" heading and a first entry, "Add an Add-on...". This entry
-opens a search popup (`ADDON_OT_pick_and_host`) over installed add-ons.
+opens a search popup (`ADDON_OT_pick_and_host`, later deleted) over
+installed add-ons.
 Picking one adds it to the curated list and hosts it immediately. A panel
 and a `UIList` in Preferences > Add-ons also manage the same list.
 

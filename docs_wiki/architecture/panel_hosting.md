@@ -11,7 +11,7 @@ last_updated: 2026-09-12
 ## The hook, not a new drawing stack
 
 `ED_region_panels_layout_ex` accepts an arbitrary panel-type list. It does
-not hard-wire to the region's own list, at `area.cc:3362-3367`:
+not hard-wire to the region's own list, at `area.cc:3439-3367`:
 
 ```cpp
 void ED_region_panels_layout_ex(const bContext *C,

@@ -71,6 +71,11 @@ from Blender's Text Editor or Python Console with
 `exec(open(<path>).read())`. They exercise the feature interactively but
 assert nothing programmatically.
 
+> **The three scripts are not distributed.** They live in `docs_ui/`, which
+> `.gitignore` excludes. A clone of this repository does not carry them. The
+> sections below describe what each one does, so the behaviour is on record
+> even without the file.
+
 ### `docs_ui/test_addon_editor.py`
 
 Enables a target add-on if needed (default `node_wrangler`, set through

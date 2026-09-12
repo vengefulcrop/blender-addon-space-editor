@@ -15,9 +15,11 @@ split-and-collapse mechanic (see
 [Horizontal Panel Layout](#horizontal-panel-layout-scoped-out) below):
 show which editor types a hosted add-on's panels need, as a header info
 button when at least one panel draws, or as an in-region information
-block when none are.
+block when none are. The sidebar tree later took over the header button's
+job. See the note below.
 
-**Single source of truth, in Python, used by both.**
+**Single source of truth, in Python, used by the in-region block below and,
+before removal, by the header button.**
 
 `_addon_supported_spaces(addon_id)` in `space_addon.py` walks
 `bpy.types.Panel.__subclasses__()` filtered to the add-on's module
@@ -29,10 +31,14 @@ resolves each to Blender's own display name via
 `bpy.types.Area.bl_rna.properties["type"].enum_items` — reusing Blender's
 existing curated names.
 
-**Header button** (`ADDON_OT_supported_editors_info`): an inert
-`INTERNAL` operator whose `description()` classmethod returns the joined
-list as its tooltip — the standard Blender idiom for a hover-only info
-affordance.
+**Header button, now removed.** `ADDON_OT_supported_editors_info`, an
+inert `INTERNAL` operator, does not exist any more. Its `description()`
+classmethod had returned the joined list as its tooltip — the standard
+Blender idiom for a hover-only info affordance. The sidebar tree replaced
+it: `ADDON_HT_header.draw()` (`space_addon.py:108`) now only shows the
+hosted add-on's display name, since the tree already lists every add-on
+with its editor types as expandable rows. See
+[Sidebar Tree View](../architecture/sidebar_tree_view.md).
 
 **Panel collection check**: `bpy.types.Region.panels` does not exist. The
 first version of the button-vs-block condition checked

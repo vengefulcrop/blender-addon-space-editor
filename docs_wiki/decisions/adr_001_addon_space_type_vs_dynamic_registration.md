@@ -8,6 +8,18 @@ last_updated: 2026-09-12
 
 # ADR 001: Space Subtype vs Dynamic Registration
 
+**Status: accepted, and the subtype half is superseded.**
+
+The core decision holds. One registered `SPACE_ADDON` type, and no dynamic
+registration. The subtype mechanism it chose is gone.
+`space_addon.cc:719-725` sets no `space_subtype_get`, `space_subtype_set`,
+or `space_subtype_item_extend`. The editor shows one plain "Add-on" entry
+in the editor type menu, and the sidebar tree chooses the hosted add-on.
+See [ADR-007](./adr_007_native_tree_view_vs_flat_list.md) and
+[Add-on Space Type](../architecture/addon_space_type.md).
+
+The text below records the decision as it stood.
+
 ## Context
 
 The original design (`legacy/custom_python_space_types_architecture.md`)

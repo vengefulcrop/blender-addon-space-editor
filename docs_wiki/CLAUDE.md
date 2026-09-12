@@ -59,6 +59,45 @@ The files stay on disk for local reading.
 - Rule 1b still applies inside the folder: an audit names the agent that
   produced it.
 
+## 1e. Deleting Code Means Deleting Its Documentation
+
+Every wrong claim found in this knowledge base traces to one cause. A
+feature was deleted, and its documentation stayed. The reader then hunts
+for machinery that is not there.
+
+**When you delete or rename a symbol, a function, a struct field, an
+operator, or a whole feature, the same commit updates every place that
+names it.** This is part of the deletion, not a follow-up task.
+
+Do this in order:
+
+1. Grep the whole repository for the name, before you delete it:
+   ```
+   grep -rn "<symbol>" source/ scripts/ docs_wiki/
+   ```
+2. Delete the code.
+3. Fix every hit the grep found. For each one, choose:
+   - The claim is now false. Rewrite it to state what the code does.
+   - The claim records history (a log entry, an ADR, a defect record).
+     Keep it, and mark it: say the symbol no longer exists, or mark the
+     section superseded.
+4. Run the checker:
+   ```
+   python docs_wiki/tools/check_references.py
+   ```
+   It reports a symbol this fork owns that no longer exists, and a
+   `file.cc:123` citation whose line is past the end of the file. A line
+   that says a symbol is gone is not flagged. Exit code 1 means work
+   remains.
+5. Run `python docs_wiki/tools/check_facts.py <file>` on every document
+   you edited, so a rewrite does not lose a fact.
+
+An ADR is never rewritten to match new code. Add a status line at the top
+that says which part is superseded, and leave the recorded decision.
+
+A line number moves on every rebase. Cite a symbol name first, and a line
+number second.
+
 ## 2. Navigation Protocol (Progressive Disclosure)
 - Always start with the root `index.md`.
 - Read the section `index.md` files (for example `architecture/index.md`) to
