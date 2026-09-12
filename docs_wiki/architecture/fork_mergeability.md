@@ -3,7 +3,7 @@ type: architecture
 title: "Fork Mergeability"
 description: "Which upstream files this fork touches, how risky each touch is on rebase, and why the design stays close to upstream mechanisms"
 tags: [architecture, addon-editor, upstream, rebase]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Fork Mergeability
@@ -22,7 +22,7 @@ large refactor.
 
 ## File-level touches, as of the point this was last measured
 
-25 files touched, +1126/-21 across 4 commits. New files
+43 files touched, +2346/-43 against the upstream base. New files
 (`editors/space_addon/`, `bl_ui/space_addon.py`) carry the bulk of this
 total. They can never conflict with upstream changes.
 

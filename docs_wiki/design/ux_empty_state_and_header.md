@@ -3,10 +3,15 @@ type: spec
 title: "UX: Empty State and Header"
 description: "How the editor explains why a panel is not drawing, and what the header shows about the current delegate"
 tags: [design, addon-editor, ux, empty-state, header]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # UX: Empty State and Header
+
+**Status:** superseded in part by Add-on Editor: remove the curated-list
+picker, tree replaces it (`5add1f67281`, 2026-08-19). The header's
+editor-type drop-down and its supported-editors info button, both
+described below, no longer exist. The sidebar tree replaced them.
 
 ## Supported-editor info: header button when drawn, in-region block when empty
 

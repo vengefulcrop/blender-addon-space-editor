@@ -3,7 +3,7 @@ type: architecture
 title: "Context Delegation"
 description: "How a re-hosted panel resolves space_data and related context by borrowing a real editor, and where that borrowing still fails"
 tags: [architecture, addon-editor, context, delegation]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Context Delegation
@@ -250,8 +250,11 @@ the user no way to see or change the outcome. `SpaceAddon` gained
 `preferred_delegate_spacetype` (`SPACE_EMPTY` means no preference,
 keeping the automatic scan as the fallback).
 `BKE_paneltypes_addon_space_types_get()` in `blenkernel` answers "which
-editor types does this add-on declare top-level panels for," shared by
-the automatic path and the picker UI.
+editor types does this add-on declare top-level panels for." The sidebar
+Add-ons tree calls it to build one child row per editor type, and
+activating a row sets both `SpaceAddon::addon_id` and
+`preferred_delegate_spacetype` together (`addon_tree_activate()`,
+`addon_tree_view.cc:113`).
 
 `addon_main_region_layout` resolves the delegate on every layout pass,
 not only on a cache miss, and folds the resolved value into the
@@ -266,8 +269,9 @@ strictly: not open means the resolved delegate is `SPACE_EMPTY`, full
 stop, with no substitution. `ADDON_PT_empty_state` names that one editor
 specifically in this case, instead of the generic "one of the
 following" list used for the no-preference (Auto) case. See
-[UX: Editor-Type Picker](./../design/ux_addon_picker.md) for the picker
-UI this preference uses.
+[UX: Editor-Type Picker](./../design/ux_addon_picker.md) for the
+superseded picker design this preference used before the sidebar tree
+replaced it.
 
 ## Should context routing be dynamic, resolved per operator call?
 

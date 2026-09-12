@@ -3,13 +3,15 @@ type: spec
 title: "UX: Editor-Type Picker"
 description: "How a user adds an add-on to the editor-type dropdown, curates it, and picks a delegate editor"
 tags: [design, addon-editor, ux, picker]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # UX: Editor-Type Picker
 
-**Status: removed.** This fork deleted the curated-list picker described
-below. A sidebar tree view replaced it; see `addon_tree_view.cc` and
+**Status:** superseded in part by Add-on Editor: remove the curated-list
+picker, tree replaces it (`5add1f67281`, 2026-08-19). The picker described
+below no longer exists in the code. A sidebar tree replaced it; see
+`addon_tree_view.cc` and
 [Sidebar Tree View](../architecture/sidebar_tree_view.md). The rest of this
 page is the design record of the removed picker, kept for its rationale.
 

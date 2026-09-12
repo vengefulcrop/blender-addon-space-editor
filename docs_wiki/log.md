@@ -262,3 +262,21 @@ pyareas OKF knowledge base.
   - Rewrote the branch history to remove the machine paths from every commit.
   - Dropped the commit count from [handoff.md](./handoffs/handoff.md) and the
     root README. The number went stale on every commit.
+- **2026-09-13** (Agent: Claude Opus 5, with three Sonnet passes):
+  - Reconciled the wiki against the commit history. Commit `5add1f67281`
+    removed the curated-list picker, and five documents still described it.
+  - Rewrote the curated-list claims in
+    [addon_space_type.md](./architecture/addon_space_type.md),
+    [context_delegation.md](./architecture/context_delegation.md),
+    [persistence_and_compatibility.md](./architecture/persistence_and_compatibility.md),
+    and the architecture index.
+  - Corrected the diff stat in
+    [fork_mergeability.md](./architecture/fork_mergeability.md) to 43 files,
+    2346 insertions, 43 deletions.
+  - Added a status line to
+    [adr_009](./decisions/adr_009_bundled_addons_opt_in.md) and to three
+    design documents. A decision record and a human-authored design keep
+    their text.
+  - Corrected six commit citations in
+    [todo.md](./operations/todo.md) and [bugfix.md](./operations/bugfix.md).
+    The history rewrite of 2026-09-12 changed every commit id.

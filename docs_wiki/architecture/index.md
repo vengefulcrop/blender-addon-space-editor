@@ -3,7 +3,7 @@ type: architecture
 title: "Architecture Index"
 description: "Section index for the Add-on Editor architecture concepts"
 tags: [architecture, addon-editor, index]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Architecture
@@ -29,9 +29,8 @@ the C++ and Python architecture that makes this work.
 - [Add-on Panel Attribution](./addon_panel_attribution.md) — How the editor decides which add-on owns a given `PanelType`.
 
 - [Persistence and Compatibility](./persistence_and_compatibility.md) —
-  How the curated add-on list and hosted-area state
-  survive `.blend` save/load, and what happens when an unmodified Blender
-  build opens or resaves a fork-saved file.
+  How the hosted-area state survives `.blend` save/load, and what happens
+  when an unmodified Blender build opens or resaves a fork-saved file.
 
 - [Sidebar Tree View](./sidebar_tree_view.md) — How developers
   construct the Addons/Bookmarks sidebar, and why the Addons tree uses a C++

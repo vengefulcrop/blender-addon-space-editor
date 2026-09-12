@@ -3,10 +3,17 @@ type: spec
 title: "Open UX Requests and Known Issues"
 description: "Outstanding UX backlog for the Add-on Editor, captured directly from user notes"
 tags: [design, addon-editor, ux, backlog]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Open UX Requests and Known Issues
+
+**Status:** superseded in part by Add-on Editor: remove the curated-list
+picker, tree replaces it (`5add1f67281`, 2026-08-19), and by Add-on Editor:
+tree row activation, bundled add-ons, and a drawing-nothing notice
+(`d66db359820`, 2026-08-19). Two lines under Done no longer match the code:
+the picker the "Add an Add-on" entry folded into is gone, and the tree has
+no active-row highlight.
 
 Captured directly from working notes on the Add-on Editor UI and UX. An
 item marked done is resolved. The rest are open.

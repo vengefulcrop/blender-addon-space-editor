@@ -3,7 +3,7 @@ type: operation
 title: "Add-on Space Editor — Defect List"
 description: "Open and fixed defects for the Add-on Space Editor, from the code review and testing notes"
 tags: [addon-space-editor, bugfix, defects]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Defect List
@@ -212,7 +212,7 @@ entry leaked into a second window's `ui_type` enum.
 
 **Status.** Fixed in the same session as item 9. Currently mitigated at
 the area-type-picker level by hiding the Add-on Editor option in
-non-main windows (commit `af9bcda50c7` ("Add-on Editor: hide the Add-ons menu section in non-main windows")). The underlying multi-window
+non-main windows (commit `e0ec73dfd1a` ("Add-on Editor: hide the Add-ons menu section in non-main windows")). The underlying multi-window
 delegation gap is still open, see [todo.md](./todo.md) items 7 to 9. No
 automated regression test exists yet. See [testing.md](./testing.md)
 item 1.

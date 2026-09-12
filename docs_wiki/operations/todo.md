@@ -3,14 +3,14 @@ type: operation
 title: "Add-on Space Editor — Open Tasks"
 description: "The open task list for the Add-on Space Editor, grouped by subject"
 tags: [addon-space-editor, todo, punch-list]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Open Tasks
 
 Consolidated from `docs_ui/punch_list.md` and the open items in
 `docs_ui/legacy/code_review.md`. Status as of 2026-08-19, checked against
-the git log up to commit `9ba0d6b569c` ("Add-on Editor: tree row activation, bundled add-ons, and a drawing-nothing notice"). See [bugfix.md](./bugfix.md) for
+the git log up to commit `d66db359820` ("Add-on Editor: tree row activation, bundled add-ons, and a drawing-nothing notice"). See [bugfix.md](./bugfix.md) for
 defects and [handoff.md](../handoffs/handoff.md) for the current branch
 state.
 
@@ -61,7 +61,7 @@ state.
    window.
 
    Currently mitigated by hiding the Add-on Editor option in
-   non-main windows (commit `af9bcda50c7` ("Add-on Editor: hide the Add-ons menu section in non-main windows")), not solved. Estimated at
+   non-main windows (commit `e0ec73dfd1a` ("Add-on Editor: hide the Add-ons menu section in non-main windows")), not solved. Estimated at
    about half a day, counting the cache-signature widening and the
    Python-side mirroring.
 
@@ -117,9 +117,9 @@ state.
     by a code trace. It is not implemented.** The delegate stays one
     value for the whole area.
 
-    The two commits `d60d293448d` ("Add-on Editor: scope context
+    The two commits `ed592f7ef76` ("Add-on Editor: scope context
     delegation to panel callbacks, fix extension names") and
-    `5608e75d78e` ("UI: let ED_region_panels_layout_ex run panel
+    `3e266991c86` ("UI: let ED_region_panels_layout_ex run panel
     callbacks under an overridden context") narrowed the *scope* of the
     override. They did not change its *resolution*. The override now
     wraps each panel callback instead of the whole layout pass. It still
@@ -241,7 +241,7 @@ state.
 25. [x] Delete `SPACE_ADDON_ID_PICK_MARKER`. **Done on 2026-09-12.**
 
     A code trace and a repo-wide grep settled it first. Nothing wrote the
-    marker. Nothing read it. The commit `06d699437bb` ("Add-on Editor:
+    marker. Nothing read it. The commit `5add1f67281` ("Add-on Editor:
     remove the curated-list picker, tree replaces it") had already deleted
     both live sites in `rna_screen.cc`:
     - The write, `saddon->addon_id[0] = SPACE_ADDON_ID_PICK_MARKER;`, in

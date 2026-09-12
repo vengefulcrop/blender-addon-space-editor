@@ -3,10 +3,26 @@ type: decision
 title: "ADR 009: Bundled Add-ons as an Opt-In Preference, Not a Filter"
 description: "Show Blender's own bundled add-ons in the picker only when the user opts in, instead of hiding them because they appear to draw nothing"
 tags: [decision, addon-editor, ux, picker, preferences]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # ADR 009: Bundled Add-ons as an Opt-In Preference, Not a Filter
+
+**Status: accepted, and the enforcement site is superseded.**
+
+The opt-in preference stays. `Preferences.show_addon_editor_bundled` still
+gates the distinction, and the bit still checks a module path for
+`addons_core`. The picker that read the preference is gone. Commit
+5add1f67281 ("Add-on Editor: remove the curated-list picker, tree
+replaces it", 2026-08-19) removed `USERPREF_PT_addon_editors` and the
+Python function `_addon_is_bundled()`. The sidebar Add-ons tree applies
+the same filter now, in C++. `addon_tree_view.cc`'s `addon_display_name()`
+calls `BPY_addon_module_info_get()` (`bpy_rna.cc`). That function checks
+for `addons_core` in the module path, the same test `_addon_is_bundled()`
+used. The checkbox itself moved to Preferences > Interface > Editors. See
+[ADR-007](./adr_007_native_tree_view_vs_flat_list.md).
+
+The text below records the decision as it stood.
 
 ## Context
 
@@ -27,16 +43,18 @@ directly.
 ## Decision
 
 `Preferences.show_addon_editor_bundled`, off by default, with a checkbox in
-`USERPREF_PT_addon_editors`, adds the opt-in. The distinction is not "will
-this draw right now", since that is unanswerable without predicting
-`poll()`. The distinction is "is this Blender's own bundled tooling or
-something the user installed", a deterministic, path-based fact.
-`_addon_is_bundled()` checks whether the module's `__file__` contains
+`USERPREF_PT_addon_editors`, adds the opt-in. That panel is gone. The
+checkbox now sits in Preferences > Interface > Editors. The distinction is
+not "will this draw right now", since that is unanswerable without
+predicting `poll()`. The distinction is "is this Blender's own bundled
+tooling or something the user installed", a deterministic, path-based
+fact. `_addon_is_bundled()` checks whether the module's `__file__` contains
 `addons_core`, versus a user's Extensions or legacy add-ons directory.
-`cycles`, `pose_library`, and `io_scene_gltf2` resolve under
-`.../5.3/scripts/addons_core/...`. Installed Extensions resolve under
-`%APPDATA%\...\extensions\<repository>\...` and always import as
-`bl_ext.*`, never `addons_core`.
+That function is gone. The same check now runs in
+`BPY_addon_module_info_get()` (`bpy_rna.cc`). `cycles`, `pose_library`, and
+`io_scene_gltf2` resolve under `.../5.3/scripts/addons_core/...`. Installed
+Extensions resolve under `%APPDATA%\...\extensions\<repository>\...` and
+always import as `bl_ext.*`, never `addons_core`.
 
 ## Alternatives considered
 
@@ -62,6 +80,9 @@ something the user installed", a deterministic, path-based fact.
   conflict on that one enum line. The conflict is ordinary, not silent
   corruption.
 - Bundled add-ons, when enabled, are listed at the very top of the picker.
+  The picker is gone. The sidebar Add-ons tree now lists bundled entries
+  in their own group, sorted separately from installed add-ons, per
+  `addon_tree_view.cc`.
 
 ## Related
 

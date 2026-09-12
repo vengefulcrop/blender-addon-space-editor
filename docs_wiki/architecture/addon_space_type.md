@@ -3,7 +3,7 @@ type: architecture
 title: "Add-on Space Type"
 description: "How SPACE_ADDON registers as a subtype-based editor and stores which add-on an area hosts"
 tags: [architecture, addon-editor, space-type, dna]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Add-on Space Type
@@ -11,12 +11,16 @@ last_updated: 2026-09-12
 ## Goal
 
 The Add-on Editor lets a user turn any enabled add-on or extension into an
-editor. The intended user flow is:
+editor. The user flow is:
 
-1. The user clicks the editor-type button in an area header.
-2. The editor-type list has an "Add-ons" heading and curated entries.
-3. The user picks an add-on. The area switches to it and shows its panels.
-4. The area draws that add-on's panels as a full editor.
+1. The user selects the "Add-on" entry from the area's editor-type menu, or
+   opens an area that already hosts one.
+2. The user picks a row in the sidebar Add-ons tree
+   (`AddonTreeView::build_tree`, `addon_tree_view.cc:139`). The tree lists
+   every enabled add-on that registers panels, expanded to that add-on's
+   editor types.
+3. The area switches to the selected add-on and space type. It draws that
+   add-on's panels as a full editor.
 
 The fork ships as a git branch on top of upstream `main`. A second
 developer fetches the branch and rebases it onto their own base. This
@@ -132,14 +136,15 @@ collapsed to the identity `"bl_ext"`. The `bl_` prefix exclusion then
 filtered it out, hiding every extension add-on from the picker. Fixed to
 keep three segments specifically for that prefix.
 
-## Curated list, not an auto-derived list
+## Auto-derived list, not a curated list
 
-The editor dropdown does not list every add-on that happens to register
-panels. It shows `UserDef.addon_editors`, a persistent, user-curated list.
-See
+**Superseded.** The sidebar Add-ons tree lists every enabled add-on that
+registers panels, through `BKE_paneltypes_addon_space_types_get()`.
+`UserDef.addon_editors` (`bAddonEditor`) no longer curates that list. It
+only supplies a display-name override, read in `addon_display_name()`
+(`addon_tree_view.cc:88`) and in `bl_ui/space_addon.py`. See
 [Curated Add-on List vs Auto-Derived List](../decisions/adr_006_curated_addon_list_vs_auto_derived.md)
-for why, and [UX: Editor-Type Picker](../design/ux_addon_picker.md) for the
-picker UX itself.
+for the superseded decision this replaced.
 
 ## Related
 

@@ -3,7 +3,7 @@ type: architecture
 title: "Persistence and Compatibility"
 description: "How the Add-on Editor's state survives .blend save/load, and what an unmodified Blender build does with a fork-saved file"
 tags: [architecture, addon-editor, dna, blend-file, versioning]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Persistence and Compatibility
@@ -15,20 +15,22 @@ machinery as every other space. Which editor an area hosts, and its
 `addon_id`, save as part of the screen layout precisely like any other
 editor choice, not specially, not separately.
 
-## Curated list persistence
+## Display-name override persistence
 
-`UserDef.addon_editors` (`bAddonEditor` list) is the persistent, curated
-list of add-ons the editor dropdown offers.
-
-`UserDef.addon_editor_max_visible` (0 = no cap) limits how many entries the dropdown shows.
-It lists entries in the order the user added them.
-See [Curated Add-on List vs Auto-Derived List](../decisions/adr_006_curated_addon_list_vs_auto_derived.md).
-See [Capping the Editor-Type Menu](../decisions/adr_008_capping_editor_type_menu.md).
+**Superseded.** `UserDef.addon_editors` (`bAddonEditor` list) no longer
+curates which add-ons the editor offers. The sidebar Add-ons tree lists
+every enabled add-on that registers panels. `addon_editors` now only
+supplies a display-name override, read in `addon_display_name()`
+(`addon_tree_view.cc:88`). `UserDef.active_addon_editor_index` and
+`UserDef.addon_editor_max_visible` read nothing and are scheduled for
+deletion (`DNA_userdef_types.h:1104-1112`).
+See [Curated Add-on List vs Auto-Derived List](../decisions/adr_006_curated_addon_list_vs_auto_derived.md)
+for the superseded decision this replaced.
 
 ## Disabled add-ons are filtered, not stored differently
 
-Disabling an add-on unregisters its classes, so a curated entry for it can
-never draw anything until it is re-enabled.
+Disabling an add-on unregisters its classes, so a listed add-on can never
+draw anything until it is re-enabled.
 
 - **Sidebar tree**: `AddonTreeView::build_tree()`
   (`addon_tree_view.cc`) lists an add-on only when
