@@ -245,3 +245,10 @@ pyareas OKF knowledge base.
     `tools/check_register.py`, and linked the wordlist in `index.md`.
 
 
+- **2026-09-12** (Agent: Claude Opus 5):
+  - Squashed the prose-only commits into five documentation milestones. The
+    branch holds 49 commits on `027ef661892`, and the tree is unchanged.
+  - Corrected the commit count in [handoff.md](./handoffs/handoff.md) from 97
+    to 49.
+  - Replaced the root `README.md` with the fork README, and deleted
+    `.github/README.md`, which carried the upstream Blender text.
