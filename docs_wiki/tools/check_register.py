@@ -91,8 +91,9 @@ def main():
             capture_output=True, text=True, cwd=ROOT,
         ).stdout.split()
         # The rule files define this vocabulary, so they name every word.
+        # register_wordlist.md is the list this checker reads from.
         # log.md is a ledger of changes, and records what was reworded.
-        skip = {"CLAUDE.md", "GEMINI.md", "log.md"}
+        skip = {"CLAUDE.md", "GEMINI.md", "log.md", "register_wordlist.md"}
         paths = [ROOT / f for f in tracked
                  if f.endswith(".md") and "/raw/" not in f
                  and Path(f).name not in skip]

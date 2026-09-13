@@ -314,3 +314,11 @@ pyareas OKF knowledge base.
     [traceability.md](./reference/traceability.md), and named it in
     [index.md](./index.md), [architecture/index.md](./architecture/index.md),
     and the root README. It stood only at the end of each document before.
+- **2026-09-13** (Agent: Claude Opus 5):
+  - Added `register_wordlist.md` to the `skip` set in
+    [check_register.py](./tools/check_register.py). The file names every
+    banned word, so the check reported 14 violations against its own list.
+    `CLAUDE.md`, `GEMINI.md`, and `log.md` already carried the exemption.
+  - Recorded the exemption and its reason in
+    [register_wordlist.md](./tools/register_wordlist.md) section 6 and in
+    `CLAUDE.md` rule 3. Regenerated `GEMINI.md`.

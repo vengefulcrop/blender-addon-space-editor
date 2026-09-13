@@ -300,6 +300,11 @@ When you add or update knowledge:
    python docs_wiki/tools/check_register.py
    ```
 
+   The check skips `CLAUDE.md`, `GEMINI.md`, `log.md`, and
+   `tools/register_wordlist.md`. These files name the banned words, so a
+   scan of them reports each word as a violation. Add a file to the `skip`
+   set in `check_register.py` only for that reason.
+
    **Commit messages are subject to these rules.** A commit message must
    adhere to the same register, STE, and concision standards. Use the
    imperative mood ("docs: clarify...", not "docs: clarified..."). Cut

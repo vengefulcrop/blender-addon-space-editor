@@ -3,7 +3,7 @@ type: reference
 title: "Banned Register Patterns and Wordlist"
 description: "Patterns, phrases, and vocabulary used to detect and eliminate novelistic, dramatic, and conversational register violations"
 tags: [tools, register, ste, style, linter]
-last_updated: 2026-09-12
+last_updated: 2026-09-13
 ---
 
 # Banned Register Patterns and Wordlist
@@ -100,3 +100,7 @@ Avoid dramatizing engineering problems or claiming emotional impact.
 
 The vocabulary in this file guides manual inspection and informs the checks in:
 - `docs_wiki/tools/check_register.py`
+
+`check_register.py` skips this file. The file names every banned word, so a
+scan of it reports each word as a violation. `CLAUDE.md`, `GEMINI.md`, and
+`log.md` carry the same exemption, for the same reason.
