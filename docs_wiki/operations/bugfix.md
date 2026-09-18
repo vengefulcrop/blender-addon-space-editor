@@ -3,7 +3,7 @@ type: operation
 title: "Add-on Space Editor — Defect List"
 description: "Open and fixed defects for the Add-on Space Editor, from the code review and testing notes"
 tags: [addon-space-editor, bugfix, defects]
-last_updated: 2026-09-13
+last_updated: 2026-09-18
 ---
 
 # Defect List
@@ -298,6 +298,62 @@ state. The screen the user sees is the same. The reason in the comment
 was wrong.
 
 **Fix.** Rewrote both comments.
+
+## 14. Crash swapping an Add-on editor area with a stock area — OPEN
+
+**Incident.** 2026-09-18. Blender 5.3.0, build `690897d5de19`. The user
+used "Swap Areas" between an Add-on editor area and a stock area. Blender
+crashed on the next redraw.
+
+**Crash record.** `EXCEPTION_ACCESS_VIOLATION`, a read at address
+`0xD0`. The main thread stack:
+
+```
+buttons_context_compute    buttons_context.cc:776
+buttons_main_region_layout space_buttons.cc:562
+ED_region_do_layout        area.cc:485
+wm_draw_area_offscreen     wm_draw.cc:996
+```
+
+Line 776 is `if (!sbuts->path)`, the first access to `sbuts`. A read at
+the small address `0xD0` matches a member read through a null
+`SpaceProperties` pointer. The header of the crash file lists
+`object.editmode_toggle` and `addon_search` as the last operator and
+property. Neither one is the cause.
+
+**Probable cause.** Not confirmed with a debugger. `ED_area_swapspace()`
+exchanges `spacetype`, `spacedata`, and `regionbase` through
+`ED_area_data_copy()`. It does not exchange
+`ScrArea::context_delegate_spacetype`. That field belongs to the `ScrArea`
+and stays with it.
+
+1. The Add-on editor area sets the field to the editor it borrows
+   context from, for example `SPACE_VIEW3D`.
+2. After the swap, that same `ScrArea` holds the Properties regions and
+   still carries the field.
+3. `buttons_main_region_layout()` calls `CTX_wm_space_properties()`.
+   `ctx_wm_area_effective()` resolves the field and returns the View 3D
+   area. That area is not `SPACE_PROPERTIES`, so the function returns
+   `nullptr`.
+4. `buttons_context_compute()` reads `sbuts->path` through the null
+   pointer.
+
+The reverse case is the same defect. An Add-on editor that lands in an
+area with no field set draws its empty state, because the field is only
+set again in `addon_main_region_layout()`.
+
+**Related.** Item 8 fixed the same class of fault for an editor type
+change. `ED_area_newspace()` clears the field. `ED_area_swapspace()` has
+no such clear. See [Context Delegation](../architecture/context_delegation.md).
+
+**Planned fix.** Set `context_delegate_spacetype` to `SPACE_EMPTY` on both
+areas in `ED_area_swapspace()`, before `ED_area_init()`. The Add-on editor
+sets the field again on its next layout pass, so the clear costs nothing.
+Not applied.
+
+**Verification gap.** Not reproduced. A regression test needs two areas
+in one screen, one Add-on editor and one Properties editor, and a call to
+`screen.area_swap`.
 
 ## Deliberately deferred, not open defects
 

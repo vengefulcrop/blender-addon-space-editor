@@ -322,3 +322,9 @@ pyareas OKF knowledge base.
   - Recorded the exemption and its reason in
     [register_wordlist.md](./tools/register_wordlist.md) section 6 and in
     `CLAUDE.md` rule 3. Regenerated `GEMINI.md`.
+- **2026-09-18** (Agent: Claude Sonnet 5):
+  - Added defect 14 to [bugfix.md](./operations/bugfix.md). Swapping an
+    Add-on editor area with a stock area crashed in
+    `buttons_context_compute()`. The crash file came from the user temp
+    directory. The probable cause and the planned fix are recorded. The fix
+    is not applied.
