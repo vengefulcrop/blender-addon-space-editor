@@ -71,12 +71,11 @@ from Blender's Text Editor or Python Console with
 `exec(open(<path>).read())`. They exercise the feature interactively but
 assert nothing programmatically.
 
-> **The three scripts are not distributed.** They live in `docs_ui/`, which
-> `.gitignore` excludes. A clone of this repository does not carry them. The
-> sections below describe what each one does, so the behaviour is on record
-> even without the file.
+The scripts live in `tests/pyareas/`, a folder this fork owns. Git tracks
+them, so a clone carries them. They were in the untracked `docs_ui/` folder
+until 2026-09-18. `tests/pyareas/README.md` lists them.
 
-### `docs_ui/test_addon_editor.py`
+### `tests/pyareas/pyareas_addon_editor_host.py`
 
 Enables a target add-on if needed (default `node_wrangler`, set through
 the `ADDON` module-level variable), converts the largest suitable area
@@ -94,7 +93,7 @@ reuses an existing `ADDON` area if one exists, otherwise picks the
 largest area not in the `KEEP` set (`CONSOLE`, `TEXT_EDITOR`, `OUTLINER`,
 `PROPERTIES`), so the script stays usable while testing.
 
-### `docs_ui/test_addon_editor_delegate.py`
+### `tests/pyareas/pyareas_addon_editor_delegate.py`
 
 Tests context delegation specifically. Node Wrangler's panel polls
 `space.type == 'NODE_EDITOR' and space.node_tree is not None`.
@@ -115,7 +114,7 @@ the largest becomes the Add-on editor hosting `node_wrangler`, the second
 largest becomes a Node Editor set to `ShaderNodeTree` / `OBJECT`, which
 the Add-on editor should borrow.
 
-### `docs_ui/test_addon_editor_demo.py`
+### `tests/pyareas/pyareas_addon_editor_demo.py`
 
 Proves the Add-on editor actually draws panels, independently of whether
 any real add-on's `poll()` happens to pass.
@@ -136,6 +135,23 @@ previous run's classes before re-registering.
 existing `ADDON` area or converts the largest suitable one, then sets
 `area.spaces.active.addon_id = "addon_editor_demo"`. Expected result: two
 top-level panels and one sub-panel drawn.
+
+### `tests/pyareas/pyareas_area_swap_delegate.py`
+
+Covers defect 14. It needs three areas, two of them adjacent.
+
+`shared_edge()` returns a point on the edge between two areas, which is what
+`screen.area_swap` takes as its `cursor` argument.
+
+`main()` hosts `node_wrangler` in an Add-on editor, puts a Properties editor
+on the adjacent area, and sets a third area to a Shader Editor, which is the
+editor the add-on borrows context from. It forces a redraw so the Add-on
+editor resolves its delegate, calls `screen.area_swap` on the shared edge,
+then reads `context_delegate_spacetype` on both areas and forces a second
+redraw.
+
+Unlike the three scripts above, it prints PASS or FAIL. An unfixed build
+crashes on the second redraw instead of printing either.
 
 ## 3. Tests to write, ranked
 

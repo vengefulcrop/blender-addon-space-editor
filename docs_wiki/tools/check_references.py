@@ -21,9 +21,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 CODE_DIRS = ["source", "scripts"]
-# Local-only test scripts. They are not distributed, but the wiki cites the
-# symbols they define, so index them when they are present.
-EXTRA_DIRS = ["docs_ui"]
+# This fork's own test scripts. The wiki cites the symbols they define, so
+# index them. `docs_ui` holds untracked working notes and older copies, and
+# stays in the list for a clone that still has them.
+EXTRA_DIRS = ["tests/pyareas", "docs_ui"]
 CODE_EXT = {".cc", ".hh", ".h", ".c", ".py"}
 
 # Files this fork adds or edits. Only their comments are ours to answer for.

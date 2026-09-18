@@ -299,7 +299,7 @@ was wrong.
 
 **Fix.** Rewrote both comments.
 
-## 14. Crash swapping an Add-on editor area with a stock area — OPEN
+## 14. Crash swapping an Add-on editor area with a stock area — FIXED
 
 **Incident.** 2026-09-18. Blender 5.3.0, build `690897d5de19`. The user
 used "Swap Areas" between an Add-on editor area and a stock area. Blender
@@ -321,7 +321,7 @@ the small address `0xD0` matches a member read through a null
 `object.editmode_toggle` and `addon_search` as the last operator and
 property. Neither one is the cause.
 
-**Probable cause.** Not confirmed with a debugger. `ED_area_swapspace()`
+**Cause.** Confirmed by a code read, not by a debugger. `ED_area_swapspace()`
 exchanges `spacetype`, `spacedata`, and `regionbase` through
 `ED_area_data_copy()`. It does not exchange
 `ScrArea::context_delegate_spacetype`. That field belongs to the `ScrArea`
@@ -338,22 +338,61 @@ and stays with it.
 4. `buttons_context_compute()` reads `sbuts->path` through the null
    pointer.
 
+The crash needs the stale type to differ from the space that lands in
+the area. An Add-on editor that delegates to `SPACE_VIEW3D` and swaps with
+the View 3D area resolves to a real View 3D area, and nothing fails. The
+same swap against the Properties editor returns `nullptr`. A user therefore
+sees no fault on one swap and a crash on the next.
+
 The reverse case is the same defect. An Add-on editor that lands in an
 area with no field set draws its empty state, because the field is only
 set again in `addon_main_region_layout()`.
 
+**Conditions.** The swap always leaves the field behind. Three conditions
+together produce the crash.
+
+1. The Add-on editor resolved a delegate. A field of `SPACE_EMPTY` is
+   harmless.
+2. The delegate type differs from the editor that lands in the area. An
+   Add-on editor that delegates to `SPACE_VIEW3D` and swaps with the View 3D
+   area still resolves to a View 3D area.
+3. That editor reads its own space through the context while it draws.
+
+Condition 3 is not specific to the Properties editor. The Image, Clip, Node,
+Sequencer and Spreadsheet editors read `CTX_wm_space_*` in their draw paths,
+and none of them check the result for null. Each one crashes the same way.
+
+**Wrong data without a crash.** `BKE_screen_find_big_area()` returns the
+largest area of the type, not the area that asked. With two View 3D areas
+open, a swap that meets condition 2 makes one View 3D read the space data of
+the other. The editor draws, and it shows the wrong view.
+
+**Second site.** `ED_area_data_swap()` has the same hole. It exchanges
+`spacetype`, `type`, `spacedata`, and `regionbase`, and leaves the field.
+`ED_screen_state_toggle()` calls it for the full screen toggle and for the
+restore. The fix belongs in both functions.
+
+The copy sites are not affected. `BKE_area_copy()` never copies the field,
+so a duplicated area starts at `SPACE_EMPTY`. The Add-on editor sets the
+field again on its next layout pass.
+
 **Related.** Item 8 fixed the same class of fault for an editor type
-change. `ED_area_newspace()` clears the field. `ED_area_swapspace()` has
-no such clear. See [Context Delegation](../architecture/context_delegation.md).
+change. `ED_area_newspace()` clears the field. `ED_area_swapspace()` and
+`ED_area_data_swap()` have no such clear. See
+[Context Delegation](../architecture/context_delegation.md).
 
-**Planned fix.** Set `context_delegate_spacetype` to `SPACE_EMPTY` on both
-areas in `ED_area_swapspace()`, before `ED_area_init()`. The Add-on editor
-sets the field again on its next layout pass, so the clear costs nothing.
-Not applied.
+**Fix.** `ED_area_swapspace()` sets `context_delegate_spacetype` to
+`SPACE_EMPTY` on both areas, before `ED_area_init()`. `ED_area_data_swap()`
+does the same for the two areas it exchanges. The Add-on editor sets the
+field again on its next layout pass, so the clear costs nothing.
 
-**Verification gap.** Not reproduced. A regression test needs two areas
-in one screen, one Add-on editor and one Properties editor, and a call to
-`screen.area_swap`.
+**Test.** `tests/pyareas/pyareas_area_swap_delegate.py`. It needs three
+areas, two of them adjacent. It hosts Node Wrangler in an Add-on editor, puts a Properties
+editor beside it, and calls `screen.area_swap` on the shared edge. It then
+forces a redraw and reports the delegate field of both areas.
+
+**Verification gap.** Not reproduced under a debugger. The chain above is
+read from the code.
 
 ## Deliberately deferred, not open defects
 

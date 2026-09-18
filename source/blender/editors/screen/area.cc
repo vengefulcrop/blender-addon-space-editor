@@ -2538,6 +2538,7 @@ void ED_area_data_copy(ScrArea *area_dst, ScrArea *area_src, const bool do_free)
   BKE_area_copy(area_dst, area_src);
 }
 
+/* [impl->arch~delegate-field-cleared-on-space-move~1] */
 void ED_area_data_swap(ScrArea *area_dst, ScrArea *area_src)
 {
   std::swap(area_dst->spacetype, area_src->spacetype);
@@ -2545,6 +2546,12 @@ void ED_area_data_swap(ScrArea *area_dst, ScrArea *area_src)
 
   std::swap(area_dst->spacedata, area_src->spacedata);
   std::swap(area_dst->regionbase, area_src->regionbase);
+
+  /* The space content moves, the field does not follow it - see #ED_area_newspace for
+   * why a stale #ScrArea::context_delegate_spacetype crashes the space that lands here.
+   * Whichever editor needs the override sets it again on its next layout pass. */
+  area_dst->context_delegate_spacetype = SPACE_EMPTY;
+  area_src->context_delegate_spacetype = SPACE_EMPTY;
 }
 
 /* -------------------------------------------------------------------- */
@@ -2790,6 +2797,7 @@ static void region_align_info_to_area(
 
 /* *********** Space switching code *********** */
 
+/* [impl->arch~delegate-field-cleared-on-space-move~1] */
 void ED_area_swapspace(bContext *C, ScrArea *sa1, ScrArea *sa2)
 {
   ScrArea *tmp = MEM_new<ScrArea>(__func__);
@@ -2801,6 +2809,14 @@ void ED_area_swapspace(bContext *C, ScrArea *sa1, ScrArea *sa2)
   ED_area_data_copy(tmp, sa1, false);
   ED_area_data_copy(sa1, sa2, true);
   ED_area_data_copy(sa2, tmp, true);
+
+  /* #ED_area_data_copy does not carry #ScrArea::context_delegate_spacetype, so each area
+   * keeps the override the editor that just left it set - see #ED_area_newspace. Cleared
+   * before #ED_area_init, so the first layout pass of each new space resolves its own
+   * context. Whichever editor needs the override sets it again on that pass. */
+  sa1->context_delegate_spacetype = SPACE_EMPTY;
+  sa2->context_delegate_spacetype = SPACE_EMPTY;
+
   ED_area_init(C, win, sa1);
   ED_area_init(C, win, sa2);
 
@@ -2826,6 +2842,7 @@ void ED_area_swapspace(bContext *C, ScrArea *sa1, ScrArea *sa2)
   ED_area_tag_refresh(sa2);
 }
 
+/* [impl->arch~delegate-field-cleared-on-space-move~1] */
 void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_region_exit)
 {
   wmWindow *win = CTX_wm_window(C);

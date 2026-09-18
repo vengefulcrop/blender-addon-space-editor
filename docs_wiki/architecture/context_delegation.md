@@ -110,13 +110,41 @@ matches. Only the field's owner and the accessor's knowledge of who uses
 it changed. See [Fork Mergeability](./fork_mergeability.md) for the
 rebase risk analysis of this refactor.
 
-`ED_area_newspace()` in `editors/screen/area.cc` resets
-`context_delegate_spacetype` to `SPACE_EMPTY` whenever an area's type
-changes, for any area. Without this reset, switching an area away from
-the Add-on Editor to, for example, a Node Editor left the stale delegate
-type in place. Context lookups for the new Node Editor area then
-redirected to an unrelated area of the old delegate type. A generic
-reset resolved this issue without Add-on-Editor-specific code.
+The field belongs to the `ScrArea`, not to the space that set it, so every
+path that moves a space between areas has to clear it. The next section
+states that rule.
+
+## Delegate field cleared when a space moves
+
+`arch~delegate-field-cleared-on-space-move~1`
+
+Needs: impl
+
+`ScrArea::context_delegate_spacetype` belongs to the area. The space that
+set it belongs to the area only until the next screen operation moves it.
+Every path that puts a different space into an area clears
+`context_delegate_spacetype` to `SPACE_EMPTY` first.
+
+Three functions in `editors/screen/area.cc` keep the rule:
+
+| Function | Moves a space by |
+|---|---|
+| `ED_area_newspace()` | Changing the editor type of one area |
+| `ED_area_swapspace()` | Exchanging the content of two areas |
+| `ED_area_data_swap()` | Exchanging the content of two areas, for the full screen toggle |
+
+A stale field does not fail where it was left. The space that lands in the
+area resolves its own context through `ctx_wm_area_effective()`, reaches an
+unrelated area of the old delegate type, and reads null or foreign space
+data. The Properties editor crashes on the null. See defect 8 and defect 14
+in [bugfix.md](../operations/bugfix.md).
+
+The clear costs nothing. An editor that needs the override sets the field
+again on its next layout pass. All three functions treat every area alike,
+so the rule holds without Add-on editor specific code.
+
+`BKE_area_copy()` needs no clear. It never copies the field, so a copied
+area starts at `SPACE_EMPTY`.
 
 ## `context.space_data` always resolves through the delegate
 

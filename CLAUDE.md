@@ -26,4 +26,5 @@ This fork adds the ability to host add-on panels in real editor areas.
 ## Source Tree
 - Blender C/C++ sources are in `source/`. Follow the upstream style in
   `.clang-format` and the handbooks in `docs_wiki/reference/`.
-- Python tests for the add-on editor are in `docs_ui/test_addon_editor*.py`.
+- Python tests for the add-on editor are in `tests/pyareas/`. That folder
+  belongs to this fork. `tests/python/` is upstream.

@@ -328,3 +328,28 @@ pyareas OKF knowledge base.
     `buttons_context_compute()`. The crash file came from the user temp
     directory. The probable cause and the planned fix are recorded. The fix
     is not applied.
+- **2026-09-18** (Agent: Claude Opus 5):
+  - Corrected defect 14 in [bugfix.md](./operations/bugfix.md). A code read
+    confirms the cause. `ED_area_data_swap()` carries the same defect, so
+    the full screen toggle is a second site. `BKE_area_copy()` never copies
+    the field, so the copy sites are not affected. Recorded why the first
+    swap shows no fault.
+  - Applied the fix for defect 14. `ED_area_swapspace()` and
+    `ED_area_data_swap()` now clear `context_delegate_spacetype`. Marked the
+    defect FIXED. Recorded the three conditions for the crash, the other
+    editors that fail the same way, and the case that shows wrong data
+    without a crash. Added `tests/pyareas/pyareas_area_swap_delegate.py`.
+  - Added the concept `arch~delegate-field-cleared-on-space-move~1` to
+    [context_delegation.md](./architecture/context_delegation.md). It states
+    that every path which moves a space into an area clears
+    `context_delegate_spacetype` first. Tagged `ED_area_newspace()`,
+    `ED_area_swapspace()` and `ED_area_data_swap()`. The trace reports 47
+    items.
+  - Moved the swap test to `tests/pyareas/`, a folder this fork owns, and
+    renamed it `pyareas_area_swap_delegate.py`. `docs_ui/` is not tracked by
+    git, and `tests/python/` is upstream. Added `tests/pyareas/README.md`.
+  - Moved the three older manual tests from `docs_ui/` to `tests/pyareas/`
+    and renamed them with the `pyareas_` prefix. Stripped the machine
+    specific path from every test docstring. Updated
+    [testing.md](./operations/testing.md), the operations index, and the
+    project `CLAUDE.md`.

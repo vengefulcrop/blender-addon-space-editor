@@ -14,5 +14,6 @@ This section reworks:
 - `docs_ui/punch_list.md`
 - `docs_ui/addon_space_editor_testing.md`
 - `docs_ui/legacy/code_review.md`
-- `docs_ui/test_addon_editor.py`, `docs_ui/test_addon_editor_delegate.py`,
-  `docs_ui/test_addon_editor_demo.py`
+- `tests/pyareas/pyareas_addon_editor_host.py`,
+  `tests/pyareas/pyareas_addon_editor_delegate.py`,
+  `tests/pyareas/pyareas_addon_editor_demo.py`
