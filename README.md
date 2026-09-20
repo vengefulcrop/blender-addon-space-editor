@@ -1,3 +1,5 @@
+![pyareas UI preview](pyareas_image_UI_preview.png)
+
 pyareas — Blender fork with add-on editor areas
 ===============================================
 
